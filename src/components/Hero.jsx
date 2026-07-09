@@ -3,16 +3,16 @@ export default function Hero() {
     <section className="hero">
       <div className="hero-copy">
         <p className="eyebrow">Curated selection</p>
-        <h2>A cleaner storefront for browsing, picking, and checking out.</h2>
+        <h2>Premium picks, bold flavors, and a faster way to shop.</h2>
         <p>
-          Built as a React JSX storefront with separated components, a small data layer,
-          and a checkout flow you can extend as the project grows.
+          Explore a sharper storefront experience with standout products, quick search,
+          and a checkout flow designed to keep every step smooth.
         </p>
       </div>
       <div className="hero-card">
-        <span>New arrivals</span>
-        <strong>Seasonal picks</strong>
-        <p>Featured products, streamlined layout, and room for future catalog data.</p>
+        <span>Fresh drops</span>
+        <strong>Top shelf now</strong>
+        <p>Discover popular bottles, everyday favorites, and easy browsing in one place.</p>
       </div>
     </section>
   );
