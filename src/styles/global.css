@@ -190,6 +190,33 @@ a {
   margin: 40px 0 18px;
 }
 
+.product-search {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.search-field {
+  display: grid;
+  gap: 8px;
+  color: #d7d1c7;
+}
+
+.search-field input {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.search-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  color: #d7d1c7;
+}
+
 .product-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -199,6 +226,19 @@ a {
 .product-card {
   border-radius: 24px;
   padding: 20px;
+}
+
+.product-size {
+  margin: 8px 0 0;
+  color: #f3d6a4;
+}
+
+.empty-products {
+  margin-top: 16px;
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  color: #d7d1c7;
 }
 
 .product-footer {
