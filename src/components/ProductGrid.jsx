@@ -1,6 +1,13 @@
 import { useMemo, useState } from 'react';
 import { products } from '../data/products';
 
+const categoryIcons = {
+  Wine: '🍷',
+  Beer: '🍺',
+  Spirits: '🥃',
+  'Non-Alcoholic': '🥤',
+};
+
 export default function ProductGrid({ onAddToCart }) {
   const [query, setQuery] = useState('');
 
@@ -50,6 +57,9 @@ export default function ProductGrid({ onAddToCart }) {
       <div className="product-grid">
         {filteredProducts.map((product) => (
           <article key={product.id} className="product-card">
+            <div className="product-icon-badge" aria-hidden="true">
+              <span>{categoryIcons[product.category] ?? '🥂'}</span>
+            </div>
             <p className="product-category">{product.category}</p>
             <h3>{product.name}</h3>
             <p className="product-size">{product.size}</p>

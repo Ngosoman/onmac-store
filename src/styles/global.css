@@ -224,8 +224,25 @@ a {
 }
 
 .product-card {
+  position: relative;
+  margin-top: 20px;
   border-radius: 24px;
-  padding: 20px;
+  padding: 28px 20px 20px;
+}
+
+.product-icon-badge {
+  position: absolute;
+  top: -18px;
+  left: 20px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(243, 214, 164, 0.25), rgba(243, 214, 164, 0.08));
+  border: 1px solid rgba(243, 214, 164, 0.35);
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.28);
+  font-size: 1.25rem;
 }
 
 .product-size {
