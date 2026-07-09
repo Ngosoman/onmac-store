@@ -87,12 +87,83 @@ a {
 }
 
 .cart-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 8px 12px;
   border-radius: 999px;
   background: rgba(215, 176, 112, 0.14);
   border: 1px solid rgba(215, 176, 112, 0.3);
   color: #f3d6a4;
   font-size: 0.9rem;
+}
+
+.cart-section {
+  margin-top: 40px;
+}
+
+.cart-panel {
+  border-radius: 28px;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(18, 18, 18, 0.72);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.24);
+}
+
+.cart-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.cart-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cart-row:last-child {
+  border-bottom: 0;
+}
+
+.cart-row p {
+  margin: 4px 0 0;
+  color: #d7d1c7;
+}
+
+.cart-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cart-row-actions button {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f5f1ea;
+  cursor: pointer;
+}
+
+.ghost-button {
+  background: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+}
+
+.cart-footer,
+.empty-cart {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-top: 18px;
 }
 
 .hero {

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import Header from './components/Header';
 import Hero from './components/Hero';
 import ProductGrid from './components/ProductGrid';
+import CartSection from './components/CartSection';
 import CheckoutForm from './components/CheckoutForm';
 import Footer from './components/Footer';
 import { products } from './data/products';
@@ -38,12 +39,41 @@ export default function App() {
     });
   }
 
+  function handleDecreaseItem(productId) {
+    setCart((currentCart) =>
+      currentCart
+        .map((item) =>
+          item.id === productId ? { ...item, quantity: item.quantity - 1 } : item,
+        )
+        .filter((item) => item.quantity > 0),
+    );
+  }
+
+  function handleIncreaseItem(productId) {
+    setCart((currentCart) =>
+      currentCart.map((item) =>
+        item.id === productId ? { ...item, quantity: item.quantity + 1 } : item,
+      ),
+    );
+  }
+
+  function handleRemoveItem(productId) {
+    setCart((currentCart) => currentCart.filter((item) => item.id !== productId));
+  }
+
   return (
     <div className="app-shell">
       <Header cartCount={cartCount} />
       <main>
         <Hero />
         <ProductGrid onAddToCart={handleAddToCart} />
+        <CartSection
+          cartItems={cartItems}
+          onIncreaseItem={handleIncreaseItem}
+          onDecreaseItem={handleDecreaseItem}
+          onRemoveItem={handleRemoveItem}
+          onProceedToCheckout={() => document.getElementById('checkout')?.scrollIntoView({ behavior: 'smooth' })}
+        />
         <section className="checkout-section" id="checkout">
           <div className="section-heading">
             <p className="eyebrow">Checkout</p>

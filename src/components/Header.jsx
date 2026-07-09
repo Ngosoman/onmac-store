@@ -7,10 +7,11 @@ export default function Header({ cartCount }) {
       </div>
       <nav aria-label="Primary" className="site-nav">
         <a href="#products">Products</a>
+        <a href="#cart">Cart</a>
         <a href="#checkout">Checkout</a>
-        <span className="cart-pill" aria-label={`${cartCount} items in cart`}>
+        <a className="cart-pill" href="#cart" aria-label={`${cartCount} items in cart`}>
           Cart {cartCount}
-        </span>
+        </a>
       </nav>
     </header>
   );
