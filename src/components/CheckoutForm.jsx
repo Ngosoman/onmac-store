@@ -1,4 +1,9 @@
+import { useState } from 'react';
+import { paymentMethodGroups } from '../data/paymentMethods';
+
 export default function CheckoutForm({ cartItems }) {
+  const [selectedMethod, setSelectedMethod] = useState('Mpesa');
+
   return (
     <form className="checkout-form">
       <div className="cart-summary" aria-live="polite">
@@ -14,6 +19,32 @@ export default function CheckoutForm({ cartItems }) {
         ) : (
           <p>Your cart is empty.</p>
         )}
+      </div>
+      <div className="payment-section">
+        <p className="eyebrow">Payment method</p>
+        <h3>Choose how you want to pay</h3>
+        <div className="payment-groups">
+          {paymentMethodGroups.map((group) => (
+            <fieldset key={group.title} className="payment-group">
+              <legend>{group.title}</legend>
+              <div className="payment-options">
+                {group.methods.map((method) => (
+                  <label key={method} className="payment-option">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value={method}
+                      checked={selectedMethod === method}
+                      onChange={() => setSelectedMethod(method)}
+                    />
+                    <span>{method}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          ))}
+        </div>
+        <p className="payment-note">Selected payment method: {selectedMethod}</p>
       </div>
       <div className="form-grid">
         <label>
