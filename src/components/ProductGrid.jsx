@@ -1,6 +1,6 @@
 import { products } from '../data/products';
 
-export default function ProductGrid() {
+export default function ProductGrid({ onAddToCart }) {
   return (
     <section className="products-section" id="products">
       <div className="section-heading">
@@ -15,7 +15,9 @@ export default function ProductGrid() {
             <p>{product.note}</p>
             <div className="product-footer">
               <strong>{product.price}</strong>
-              <button type="button">Add to cart</button>
+              <button type="button" onClick={() => onAddToCart(product)}>
+                Add to cart
+              </button>
             </div>
           </article>
         ))}

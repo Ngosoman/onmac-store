@@ -83,6 +83,16 @@ a {
 .site-nav {
   display: flex;
   gap: 18px;
+  align-items: center;
+}
+
+.cart-pill {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(215, 176, 112, 0.14);
+  border: 1px solid rgba(215, 176, 112, 0.3);
+  color: #f3d6a4;
+  font-size: 0.9rem;
 }
 
 .hero {
@@ -146,6 +156,19 @@ a {
 .checkout-form {
   border-radius: 28px;
   padding: 24px;
+}
+
+.cart-summary {
+  margin-bottom: 20px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cart-summary ul {
+  margin: 12px 0 0;
+  padding-left: 18px;
 }
 
 .form-grid {

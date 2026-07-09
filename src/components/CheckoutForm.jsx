@@ -1,6 +1,20 @@
-export default function CheckoutForm() {
+export default function CheckoutForm({ cartItems }) {
   return (
     <form className="checkout-form">
+      <div className="cart-summary" aria-live="polite">
+        <p className="eyebrow">Cart summary</p>
+        {cartItems.length > 0 ? (
+          <ul>
+            {cartItems.map((item) => (
+              <li key={item.id}>
+                {item.product?.name} x {item.quantity}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>Your cart is empty.</p>
+        )}
+      </div>
       <div className="form-grid">
         <label>
           First name
