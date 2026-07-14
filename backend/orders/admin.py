@@ -10,7 +10,7 @@ class OrderItemInline(admin.TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-	list_display = ("id", "reference", "merchant_reference", "pesapal_tracking_id", "customer_email", "status", "total_amount", "created_at")
+	list_display = ("id", "reference", "merchant_reference", "currency", "pesapal_tracking_id", "customer_email", "status", "total_amount", "created_at")
 	list_filter = ("status", "created_at")
 	search_fields = ("reference", "merchant_reference", "pesapal_tracking_id", "customer_name", "customer_email")
 	readonly_fields = ("reference",)

@@ -37,6 +37,7 @@ def _serialize_order(order):
 		"shipping_address": order.shipping_address,
 		"payment_method": order.payment_method,
 		"pesapal_tracking_id": order.pesapal_tracking_id,
+		"currency": order.currency,
 		"status": order.status,
 		"total_amount": str(order.total_amount),
 		"created_at": order.created_at.isoformat(),
@@ -78,6 +79,7 @@ def orders_collection(request):
 			payment_method=payload.get("payment_method", "").strip(),
 			merchant_reference=payload.get("merchant_reference"),
 			pesapal_tracking_id=payload.get("pesapal_tracking_id"),
+			currency=payload.get("currency", Order.Currency.KES),
 			status=payload.get("status", Order.Status.PENDING),
 			total_amount=0,
 		)
@@ -143,6 +145,13 @@ def order_detail(request, order_id):
 		merchant_reference = payload.get("merchant_reference")
 		order.merchant_reference = merchant_reference.strip() if isinstance(merchant_reference, str) else merchant_reference
 		update_fields.append("merchant_reference")
+
+	if "currency" in payload:
+		currency = payload.get("currency")
+		if currency not in dict(Order.Currency.choices):
+			return JsonResponse({"error": "Invalid currency. Use KES, USD, or GBP."}, status=400)
+		order.currency = currency
+		update_fields.append("currency")
 
 	if len(update_fields) == 1:
 		return JsonResponse({"error": "No valid fields to update."}, status=400)

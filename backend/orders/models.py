@@ -10,6 +10,11 @@ class Order(models.Model):
 		FAILED = "failed", "Failed"
 		CANCELLED = "cancelled", "Cancelled"
 
+	class Currency(models.TextChoices):
+		KES = "KES", "KES"
+		USD = "USD", "USD"
+		GBP = "GBP", "GBP"
+
 	reference = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 	merchant_reference = models.CharField(max_length=100, blank=True, null=True, unique=True)
 	customer_name = models.CharField(max_length=120)
@@ -18,6 +23,7 @@ class Order(models.Model):
 	shipping_address = models.TextField(blank=True)
 	payment_method = models.CharField(max_length=50, blank=True)
 	pesapal_tracking_id = models.CharField(max_length=100, blank=True, null=True)
+	currency = models.CharField(max_length=3, choices=Currency.choices, default=Currency.KES)
 	status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
 	total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 	created_at = models.DateTimeField(auto_now_add=True)
