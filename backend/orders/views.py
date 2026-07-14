@@ -23,7 +23,8 @@ def _serialize_order_item(item):
 		"product_name": item.product_name,
 		"quantity": item.quantity,
 		"unit_price": str(item.unit_price),
-		"line_total": str(item.unit_price * item.quantity),
+		"subtotal": str(item.subtotal),
+		"line_total": str(item.subtotal),
 	}
 
 
@@ -106,7 +107,7 @@ def orders_collection(request):
 				quantity=quantity,
 				unit_price=unit_price,
 			)
-			total += unit_price * quantity
+			total += Decimal(str(unit_price)) * quantity
 
 		order.total_amount = total
 		order.save(update_fields=["total_amount", "updated_at"])

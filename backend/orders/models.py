@@ -1,4 +1,5 @@
 import uuid
+from decimal import Decimal
 
 from django.db import models
 
@@ -50,6 +51,11 @@ class OrderItem(models.Model):
 	product_name = models.CharField(max_length=150)
 	quantity = models.PositiveIntegerField(default=1)
 	unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+	subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
 	def __str__(self):
 		return f"{self.product_name} x {self.quantity}"
+
+	def save(self, *args, **kwargs):
+		self.subtotal = (Decimal(self.unit_price) * self.quantity).quantize(Decimal("0.01"))
+		super().save(*args, **kwargs)
