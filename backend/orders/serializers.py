@@ -1,9 +1,14 @@
-from decimal import Decimal
-
-from django.db import transaction
 from rest_framework import serializers
 
 from .models import Order, OrderItem
+
+
+PAYMENT_METHOD_CHOICES = (
+	("PESAPAL", "PESAPAL"),
+	("CARD", "CARD"),
+	("MPESA", "MPESA"),
+	("BANK", "BANK"),
+)
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
@@ -21,12 +26,8 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 
 class OrderSerializer(serializers.ModelSerializer):
-	class PaymentMethodChoices(serializers.ChoiceField):
-		def __init__(self, **kwargs):
-			super().__init__(choices=("PESAPAL", "CARD", "MPESA", "BANK"), **kwargs)
-
-	items = OrderItemSerializer(many=True, required=True)
-	payment_method = PaymentMethodChoices(allow_blank=True, required=False)
+	items = OrderItemSerializer(many=True, required=True, allow_empty=False)
+	payment_method = serializers.ChoiceField(choices=PAYMENT_METHOD_CHOICES, allow_blank=True, required=False)
 
 	class Meta:
 		model = Order
@@ -60,39 +61,3 @@ class OrderSerializer(serializers.ModelSerializer):
 		if not items:
 			raise serializers.ValidationError("At least one order item is required.")
 		return items
-
-	def _recalculate_total(self, items):
-		return sum((item.subtotal for item in items), Decimal("0"))
-
-	@transaction.atomic
-	def create(self, validated_data):
-		items_data = validated_data.pop("items")
-		order = Order.objects.create(**validated_data)
-		created_items = []
-
-		for item_data in items_data:
-			created_items.append(OrderItem.objects.create(order=order, **item_data))
-
-		order.total_amount = self._recalculate_total(created_items)
-		order.save(update_fields=["total_amount", "updated_at"])
-		return order
-
-	@transaction.atomic
-	def update(self, instance, validated_data):
-		if instance.status == Order.Status.PAID:
-			raise serializers.ValidationError({"status": "Paid orders cannot be modified."})
-
-		items_data = validated_data.pop("items", None)
-
-		for attr, value in validated_data.items():
-			setattr(instance, attr, value)
-
-		if items_data is not None:
-			instance.items.all().delete()
-			created_items = []
-			for item_data in items_data:
-				created_items.append(OrderItem.objects.create(order=instance, **item_data))
-			instance.total_amount = self._recalculate_total(created_items)
-
-		instance.save()
-		return instance

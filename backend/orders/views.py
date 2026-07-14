@@ -6,6 +6,7 @@ from django.views.decorators.http import require_http_methods
 
 from .models import Order
 from .serializers import OrderSerializer
+from .services import OrderService
 
 
 def health(request):
@@ -35,7 +36,7 @@ def orders_collection(request):
 	if not serializer.is_valid():
 		return JsonResponse(serializer.errors, status=400)
 
-	order = serializer.save()
+	order = OrderService.create_order(serializer.validated_data)
 	return JsonResponse(OrderSerializer(order).data, status=201)
 
 
@@ -58,5 +59,5 @@ def order_detail(request, order_id):
 	if not serializer.is_valid():
 		return JsonResponse(serializer.errors, status=400)
 
-	order = serializer.save()
+	order = OrderService.update_order(order, serializer.validated_data)
 	return JsonResponse(OrderSerializer(order).data)
