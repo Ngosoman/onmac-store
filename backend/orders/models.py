@@ -11,6 +11,7 @@ class Order(models.Model):
 		CANCELLED = "cancelled", "Cancelled"
 
 	reference = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+	merchant_reference = models.CharField(max_length=100, blank=True, null=True, unique=True)
 	customer_name = models.CharField(max_length=120)
 	customer_email = models.EmailField()
 	customer_phone = models.CharField(max_length=30, blank=True)
@@ -24,6 +25,17 @@ class Order(models.Model):
 
 	def __str__(self):
 		return f"Order {self.reference} - {self.customer_email}"
+
+	def save(self, *args, **kwargs):
+		if not self.merchant_reference:
+			self.merchant_reference = self._generate_merchant_reference()
+		super().save(*args, **kwargs)
+
+	def _generate_merchant_reference(self):
+		base_reference = f"MR-{uuid.uuid4().hex[:12].upper()}"
+		while Order.objects.filter(merchant_reference=base_reference).exists():
+			base_reference = f"MR-{uuid.uuid4().hex[:12].upper()}"
+		return base_reference
 
 
 class OrderItem(models.Model):

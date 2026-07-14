@@ -30,6 +30,7 @@ def _serialize_order(order):
 	return {
 		"id": order.id,
 		"reference": str(order.reference),
+		"merchant_reference": order.merchant_reference,
 		"customer_name": order.customer_name,
 		"customer_email": order.customer_email,
 		"customer_phone": order.customer_phone,
@@ -75,6 +76,7 @@ def orders_collection(request):
 			customer_phone=payload.get("customer_phone", "").strip(),
 			shipping_address=payload.get("shipping_address", "").strip(),
 			payment_method=payload.get("payment_method", "").strip(),
+			merchant_reference=payload.get("merchant_reference"),
 			pesapal_tracking_id=payload.get("pesapal_tracking_id"),
 			status=payload.get("status", Order.Status.PENDING),
 			total_amount=0,
@@ -136,6 +138,11 @@ def order_detail(request, order_id):
 		tracking_id = payload.get("pesapal_tracking_id")
 		order.pesapal_tracking_id = tracking_id.strip() if isinstance(tracking_id, str) else tracking_id
 		update_fields.append("pesapal_tracking_id")
+
+	if "merchant_reference" in payload:
+		merchant_reference = payload.get("merchant_reference")
+		order.merchant_reference = merchant_reference.strip() if isinstance(merchant_reference, str) else merchant_reference
+		update_fields.append("merchant_reference")
 
 	if len(update_fields) == 1:
 		return JsonResponse({"error": "No valid fields to update."}, status=400)
