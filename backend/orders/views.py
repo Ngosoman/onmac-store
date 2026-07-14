@@ -19,6 +19,7 @@ def _parse_json(request):
 def _serialize_order_item(item):
 	return {
 		"id": item.id,
+		"product_id": item.product_id,
 		"product_name": item.product_name,
 		"quantity": item.quantity,
 		"unit_price": str(item.unit_price),
@@ -86,6 +87,7 @@ def orders_collection(request):
 
 		total = Decimal("0")
 		for raw_item in items:
+			product_id = raw_item.get("product_id")
 			product_name = str(raw_item.get("product_name", "")).strip()
 			quantity = int(raw_item.get("quantity", 1))
 			unit_price = Decimal(str(raw_item.get("unit_price", "0")))
@@ -99,6 +101,7 @@ def orders_collection(request):
 
 			OrderItem.objects.create(
 				order=order,
+				product_id=product_id,
 				product_name=product_name,
 				quantity=quantity,
 				unit_price=unit_price,
