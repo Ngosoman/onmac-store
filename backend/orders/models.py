@@ -16,6 +16,7 @@ class Order(models.Model):
 	customer_phone = models.CharField(max_length=30, blank=True)
 	shipping_address = models.TextField(blank=True)
 	payment_method = models.CharField(max_length=50, blank=True)
+	pesapal_tracking_id = models.CharField(max_length=100, blank=True, null=True)
 	status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
 	total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 	created_at = models.DateTimeField(auto_now_add=True)

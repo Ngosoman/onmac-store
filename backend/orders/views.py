@@ -35,6 +35,7 @@ def _serialize_order(order):
 		"customer_phone": order.customer_phone,
 		"shipping_address": order.shipping_address,
 		"payment_method": order.payment_method,
+		"pesapal_tracking_id": order.pesapal_tracking_id,
 		"status": order.status,
 		"total_amount": str(order.total_amount),
 		"created_at": order.created_at.isoformat(),
@@ -74,6 +75,7 @@ def orders_collection(request):
 			customer_phone=payload.get("customer_phone", "").strip(),
 			shipping_address=payload.get("shipping_address", "").strip(),
 			payment_method=payload.get("payment_method", "").strip(),
+			pesapal_tracking_id=payload.get("pesapal_tracking_id"),
 			status=payload.get("status", Order.Status.PENDING),
 			total_amount=0,
 		)
@@ -121,10 +123,22 @@ def order_detail(request, order_id):
 	if payload is None:
 		return JsonResponse({"error": "Invalid JSON payload."}, status=400)
 
-	next_status = payload.get("status")
-	if next_status not in dict(Order.Status.choices):
-		return JsonResponse({"error": "Invalid order status."}, status=400)
+	update_fields = ["updated_at"]
 
-	order.status = next_status
-	order.save(update_fields=["status", "updated_at"])
+	next_status = payload.get("status")
+	if next_status is not None:
+		if next_status not in dict(Order.Status.choices):
+			return JsonResponse({"error": "Invalid order status."}, status=400)
+		order.status = next_status
+		update_fields.append("status")
+
+	if "pesapal_tracking_id" in payload:
+		tracking_id = payload.get("pesapal_tracking_id")
+		order.pesapal_tracking_id = tracking_id.strip() if isinstance(tracking_id, str) else tracking_id
+		update_fields.append("pesapal_tracking_id")
+
+	if len(update_fields) == 1:
+		return JsonResponse({"error": "No valid fields to update."}, status=400)
+
+	order.save(update_fields=update_fields)
 	return JsonResponse(_serialize_order(order))
