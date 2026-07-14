@@ -1,13 +1,12 @@
 from decimal import Decimal
 
+from django.db import transaction
 from rest_framework import serializers
 
 from .models import Order, OrderItem
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
-	line_total = serializers.SerializerMethodField()
-
 	class Meta:
 		model = OrderItem
 		fields = (
@@ -17,16 +16,17 @@ class OrderItemSerializer(serializers.ModelSerializer):
 			"quantity",
 			"unit_price",
 			"subtotal",
-			"line_total",
 		)
-		read_only_fields = ("subtotal", "line_total")
-
-	def get_line_total(self, obj):
-		return str(obj.subtotal)
+		read_only_fields = ("id", "subtotal")
 
 
 class OrderSerializer(serializers.ModelSerializer):
-	items = OrderItemSerializer(many=True, required=False)
+	class PaymentMethodChoices(serializers.ChoiceField):
+		def __init__(self, **kwargs):
+			super().__init__(choices=("PESAPAL", "CARD", "MPESA", "BANK"), **kwargs)
+
+	items = OrderItemSerializer(many=True, required=True)
+	payment_method = PaymentMethodChoices(allow_blank=True, required=False)
 
 	class Meta:
 		model = Order
@@ -48,8 +48,9 @@ class OrderSerializer(serializers.ModelSerializer):
 			"items",
 		)
 		read_only_fields = (
-			"id",
 			"reference",
+			"merchant_reference",
+			"pesapal_tracking_id",
 			"total_amount",
 			"created_at",
 			"updated_at",
@@ -60,20 +61,27 @@ class OrderSerializer(serializers.ModelSerializer):
 			raise serializers.ValidationError("At least one order item is required.")
 		return items
 
+	def _recalculate_total(self, items):
+		return sum((item.subtotal for item in items), Decimal("0"))
+
+	@transaction.atomic
 	def create(self, validated_data):
-		items_data = validated_data.pop("items", [])
+		items_data = validated_data.pop("items")
 		order = Order.objects.create(**validated_data)
-		total_amount = Decimal("0")
+		created_items = []
 
 		for item_data in items_data:
-			item = OrderItem.objects.create(order=order, **item_data)
-			total_amount += item.subtotal
+			created_items.append(OrderItem.objects.create(order=order, **item_data))
 
-		order.total_amount = total_amount
+		order.total_amount = self._recalculate_total(created_items)
 		order.save(update_fields=["total_amount", "updated_at"])
 		return order
 
+	@transaction.atomic
 	def update(self, instance, validated_data):
+		if instance.status == Order.Status.PAID:
+			raise serializers.ValidationError({"status": "Paid orders cannot be modified."})
+
 		items_data = validated_data.pop("items", None)
 
 		for attr, value in validated_data.items():
@@ -81,11 +89,10 @@ class OrderSerializer(serializers.ModelSerializer):
 
 		if items_data is not None:
 			instance.items.all().delete()
-			total_amount = Decimal("0")
+			created_items = []
 			for item_data in items_data:
-				item = OrderItem.objects.create(order=instance, **item_data)
-				total_amount += item.subtotal
-			instance.total_amount = total_amount
+				created_items.append(OrderItem.objects.create(order=instance, **item_data))
+			instance.total_amount = self._recalculate_total(created_items)
 
 		instance.save()
 		return instance
