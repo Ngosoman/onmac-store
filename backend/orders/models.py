@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 
 
@@ -8,6 +10,7 @@ class Order(models.Model):
 		FAILED = "failed", "Failed"
 		CANCELLED = "cancelled", "Cancelled"
 
+	reference = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 	customer_name = models.CharField(max_length=120)
 	customer_email = models.EmailField()
 	customer_phone = models.CharField(max_length=30, blank=True)
@@ -19,7 +22,7 @@ class Order(models.Model):
 	updated_at = models.DateTimeField(auto_now=True)
 
 	def __str__(self):
-		return f"Order #{self.id} - {self.customer_email}"
+		return f"Order {self.reference} - {self.customer_email}"
 
 
 class OrderItem(models.Model):

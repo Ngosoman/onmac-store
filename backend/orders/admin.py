@@ -10,9 +10,10 @@ class OrderItemInline(admin.TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-	list_display = ("id", "customer_email", "status", "total_amount", "created_at")
+	list_display = ("id", "reference", "customer_email", "status", "total_amount", "created_at")
 	list_filter = ("status", "created_at")
-	search_fields = ("customer_name", "customer_email")
+	search_fields = ("reference", "customer_name", "customer_email")
+	readonly_fields = ("reference",)
 	inlines = [OrderItemInline]
 
 # Register your models here.

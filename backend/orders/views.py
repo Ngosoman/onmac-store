@@ -29,6 +29,7 @@ def _serialize_order_item(item):
 def _serialize_order(order):
 	return {
 		"id": order.id,
+		"reference": str(order.reference),
 		"customer_name": order.customer_name,
 		"customer_email": order.customer_email,
 		"customer_phone": order.customer_phone,
