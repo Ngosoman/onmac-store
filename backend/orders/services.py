@@ -12,14 +12,18 @@ class OrderService:
 		return sum((item.subtotal for item in items), Decimal("0"))
 
 	@staticmethod
+	def _create_order_items(order, items_data):
+		created_items = []
+		for item_data in items_data:
+			created_items.append(OrderItem.objects.create(order=order, **item_data))
+		return created_items
+
+	@staticmethod
 	@transaction.atomic
 	def create_order(validated_data):
 		items_data = validated_data.pop("items")
 		order = Order.objects.create(**validated_data)
-		created_items = []
-
-		for item_data in items_data:
-			created_items.append(OrderItem.objects.create(order=order, **item_data))
+		created_items = OrderService._create_order_items(order, items_data)
 
 		order.total_amount = OrderService._calculate_total(created_items)
 		order.save(update_fields=["total_amount", "updated_at"])
@@ -38,9 +42,7 @@ class OrderService:
 
 		if items_data is not None:
 			order.items.all().delete()
-			created_items = []
-			for item_data in items_data:
-				created_items.append(OrderItem.objects.create(order=order, **item_data))
+			created_items = OrderService._create_order_items(order, items_data)
 			order.total_amount = OrderService._calculate_total(created_items)
 
 		order.save()
