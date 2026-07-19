@@ -24,6 +24,13 @@ class OrderItemSerializer(serializers.ModelSerializer):
 		)
 		read_only_fields = ("id", "subtotal")
 
+	def validate(self, attrs):
+		if attrs.get("quantity", 1) <= 0:
+			raise serializers.ValidationError({"quantity": "Quantity must be greater than zero."})
+		if "unit_price" in attrs and attrs["unit_price"] <= 0:
+			raise serializers.ValidationError({"unit_price": "Unit price must be greater than zero."})
+		return attrs
+
 
 class OrderSerializer(serializers.ModelSerializer):
 	items = OrderItemSerializer(many=True, required=True, allow_empty=False)
@@ -61,3 +68,8 @@ class OrderSerializer(serializers.ModelSerializer):
 		if not items:
 			raise serializers.ValidationError("At least one order item is required.")
 		return items
+
+	def validate(self, attrs):
+		if self.instance and self.instance.status == Order.Status.PAID:
+			raise serializers.ValidationError({"status": "Paid orders cannot be modified."})
+		return attrs
