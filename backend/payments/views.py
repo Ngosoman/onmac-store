@@ -1,4 +1,7 @@
 from django.db import DatabaseError
+from django.conf import settings
+from django.shortcuts import redirect
+from urllib.parse import urlencode
 from rest_framework import exceptions
 from rest_framework import generics, status
 from rest_framework.views import APIView
@@ -79,7 +82,33 @@ class _PesapalNotificationMixin:
 
 class PaymentCallbackAPIView(_PesapalNotificationMixin, APIView):
 	def get(self, request, *args, **kwargs):
-		return self._reconcile(request.query_params)
+		notification_data = self._extract_notification_data(request.query_params)
+		payment = PaymentService.reconcile_pesapal_notification(**notification_data)
+
+		result_url = str(getattr(settings, "FRONTEND_PAYMENT_RESULT_URL", "")).strip()
+		if not result_url:
+			return Response(
+				{
+					"message": "Payment callback processed.",
+					"payment_reference": str(payment.reference),
+					"payment_status": payment.status,
+					"order_reference": str(payment.order.reference),
+					"order_status": payment.order.status,
+				},
+				status=status.HTTP_200_OK,
+			)
+
+		query = urlencode(
+			{
+				"payment_reference": str(payment.reference),
+				"payment_status": payment.status,
+				"order_reference": str(payment.order.reference),
+				"order_status": payment.order.status,
+				"order_tracking_id": notification_data["order_tracking_id"],
+			}
+		)
+		separator = "&" if "?" in result_url else "?"
+		return redirect(f"{result_url}{separator}{query}")
 
 
 class PaymentIPNAPIView(_PesapalNotificationMixin, APIView):
