@@ -1,7 +1,21 @@
 import { useState } from 'react';
 import { paymentMethodGroups } from '../data/paymentMethods';
 
-const PESAPAL_SUPPORTED_METHODS = new Set(['Mpesa', 'Airtel', 'Mastercard', 'Visacards']);
+const PESAPAL_ROUTABLE_METHODS = new Set(['Mpesa', 'Airtel', 'Mastercard', 'Visacards']);
+
+function normalizePaymentMethod(method) {
+  const trimmedMethod = String(method || '').trim();
+
+  if (!trimmedMethod) {
+    return 'PESAPAL';
+  }
+
+  if (PESAPAL_ROUTABLE_METHODS.has(trimmedMethod)) {
+    return 'PESAPAL';
+  }
+
+  return trimmedMethod.toUpperCase();
+}
 
 export default function CheckoutForm({ cartItems }) {
   const [selectedMethod, setSelectedMethod] = useState('Mpesa');
@@ -55,11 +69,6 @@ export default function CheckoutForm({ cartItems }) {
       return;
     }
 
-    if (!PESAPAL_SUPPORTED_METHODS.has(selectedMethod)) {
-      setErrorMessage('For now, only Mpesa, Airtel, Mastercard, and Visacards are supported via Pesapal.');
-      return;
-    }
-
     const formData = new FormData(event.currentTarget);
     const firstName = String(formData.get('firstName') || '').trim();
     const lastName = String(formData.get('lastName') || '').trim();
@@ -82,7 +91,7 @@ export default function CheckoutForm({ cartItems }) {
       customer_email: email,
       customer_phone: phone,
       shipping_address: shippingAddress,
-      payment_method: 'PESAPAL',
+      payment_method: normalizePaymentMethod(selectedMethod),
       currency: 'KES',
       items: cartItems.map((item) => ({
         product_id: item.product?.id,
@@ -126,15 +135,15 @@ export default function CheckoutForm({ cartItems }) {
               <legend>{group.title}</legend>
               <div className="payment-options">
                 {group.methods.map((method) => (
-                  <label key={method} className="payment-option">
+                  <label key={method.value} className="payment-option">
                     <input
                       type="radio"
                       name="paymentMethod"
-                      value={method}
-                      checked={selectedMethod === method}
-                      onChange={() => setSelectedMethod(method)}
+                      value={method.value}
+                      checked={selectedMethod === method.value}
+                      onChange={() => setSelectedMethod(method.value)}
                     />
-                    <span>{method}</span>
+                    <span>{method.label}</span>
                   </label>
                 ))}
               </div>
