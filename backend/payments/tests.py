@@ -1,3 +1,90 @@
-from django.test import TestCase
+from decimal import Decimal
 
-# Create your tests here.
+from django.test import TestCase
+from rest_framework import serializers
+from rest_framework.test import APIClient
+
+from orders.models import Order, OrderItem
+
+from .models import Payment
+from .services import PaymentService
+
+
+class PaymentServiceTests(TestCase):
+	def setUp(self):
+		self.order = Order.objects.create(
+			customer_name="Jane Doe",
+			customer_email="jane@example.com",
+			payment_method="PESAPAL",
+			currency="KES",
+			total_amount=Decimal("350.00"),
+		)
+		OrderItem.objects.create(
+			order=self.order,
+			product_id=101,
+			product_name="Test Product",
+			quantity=2,
+			unit_price=Decimal("175.00"),
+			subtotal=Decimal("350.00"),
+		)
+
+	def test_initiate_payment_uses_order_totals_and_creates_pending_payment(self):
+		payment = PaymentService.initiate_payment(
+			order_reference=str(self.order.reference),
+			provider=Payment.Provider.PESAPAL,
+		)
+
+		self.assertEqual(payment.amount, Decimal("350.00"))
+		self.assertEqual(payment.currency, "KES")
+		self.assertEqual(payment.status, Payment.Status.PENDING)
+		self.assertTrue(payment.redirect_url)
+
+	def test_initiate_payment_rejects_paid_orders(self):
+		self.order.status = Order.Status.PAID
+		self.order.save(update_fields=["status"])
+
+		with self.assertRaises(serializers.ValidationError):
+			PaymentService.initiate_payment(
+				order_reference=str(self.order.reference),
+				provider=Payment.Provider.PESAPAL,
+			)
+
+
+class PaymentApiTests(TestCase):
+	def setUp(self):
+		self.client = APIClient()
+		self.order = Order.objects.create(
+			customer_name="Jane Doe",
+			customer_email="jane@example.com",
+			currency="KES",
+			total_amount=Decimal("120.00"),
+		)
+		OrderItem.objects.create(
+			order=self.order,
+			product_id=201,
+			product_name="API Product",
+			quantity=1,
+			unit_price=Decimal("120.00"),
+			subtotal=Decimal("120.00"),
+		)
+
+	def test_post_initiates_payment(self):
+		response = self.client.post(
+			"/api/payments/",
+			data={"order_reference": str(self.order.reference), "provider": "PESAPAL"},
+			format="json",
+		)
+
+		self.assertEqual(response.status_code, 201)
+		self.assertEqual(response.data["amount"], "120.00")
+
+	def test_get_order_payments_returns_created_payments(self):
+		payment = PaymentService.initiate_payment(
+			order_reference=str(self.order.reference),
+			provider=Payment.Provider.PESAPAL,
+		)
+
+		response = self.client.get(f"/api/payments/order/{self.order.reference}/")
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.data[0]["reference"], str(payment.reference))
