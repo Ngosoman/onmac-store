@@ -1,9 +1,8 @@
 from django.urls import path
 
-from .views import health, order_detail, orders_collection
+from .views import OrderDetailAPIView, OrderListCreateAPIView
 
 urlpatterns = [
-    path("health/", health, name="orders-health"),
-    path("", orders_collection, name="orders-collection"),
-    path("<int:order_id>/", order_detail, name="order-detail"),
+    path("", OrderListCreateAPIView.as_view(), name="order-list-create"),
+    path("<uuid:reference>/", OrderDetailAPIView.as_view(), name="order-detail-by-reference"),
 ]

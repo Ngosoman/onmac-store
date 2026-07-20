@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from .models import Order, OrderItem
+from .services import OrderService
 
 
 PAYMENT_METHOD_CHOICES = (
@@ -56,9 +57,11 @@ class OrderSerializer(serializers.ModelSerializer):
 			"items",
 		)
 		read_only_fields = (
+			"id",
 			"reference",
 			"merchant_reference",
 			"pesapal_tracking_id",
+			"status",
 			"total_amount",
 			"created_at",
 			"updated_at",
@@ -73,3 +76,6 @@ class OrderSerializer(serializers.ModelSerializer):
 		if self.instance and self.instance.status == Order.Status.PAID:
 			raise serializers.ValidationError({"status": "Paid orders cannot be modified."})
 		return attrs
+
+	def create(self, validated_data):
+		return OrderService.create_order(validated_data)
