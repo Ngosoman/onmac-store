@@ -1,1 +1,7 @@
 .env
+.env.local
+
+# Python cache artifacts
+__pycache__/
+*.py[cod]
+.env.test

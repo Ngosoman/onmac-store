@@ -11,11 +11,18 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+import sys
 
 import environ
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load base environment first, then layer test-specific overrides.
+load_dotenv(BASE_DIR / ".env")
+if "test" in sys.argv:
+    load_dotenv(BASE_DIR / ".env.test", override=True)
 
 env = environ.Env()
 environ.Env.read_env(BASE_DIR / ".env")
