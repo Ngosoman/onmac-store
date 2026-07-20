@@ -63,3 +63,27 @@ class OrderService:
 		except IntegrityError as exc:
 			raise serializers.ValidationError({"detail": ["Unable to create the order right now."]}) from exc
 
+	@staticmethod
+	@transaction.atomic
+	def update_order(order: Order, validated_data: dict[str, Any]) -> Order:
+		"""Update a mutable order while recalculating totals for replaced items."""
+
+		if order.status == Order.Status.PAID:
+			raise serializers.ValidationError({"status": "Paid orders cannot be modified."})
+
+		order_data = validated_data.copy()
+		items_data = order_data.pop("items", None)
+
+		for field_name, value in order_data.items():
+			setattr(order, field_name, value)
+
+		if items_data is not None:
+			if not items_data:
+				raise serializers.ValidationError({"items": ["At least one order item is required."]})
+			order.items.all().delete()
+			created_items = OrderService._create_order_items(order=order, items_data=items_data)
+			order.total_amount = OrderService._calculate_order_total(created_items)
+
+		order.save()
+		return order
+
