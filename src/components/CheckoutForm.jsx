@@ -1,17 +1,11 @@
 import { useState } from 'react';
 import { paymentMethodGroups } from '../data/paymentMethods';
 
-const PESAPAL_ROUTABLE_METHODS = new Set(['Mpesa', 'Airtel', 'Mastercard', 'Visacards']);
-
 function normalizePaymentMethod(method) {
   const trimmedMethod = String(method || '').trim();
 
   if (!trimmedMethod) {
-    return 'PESAPAL';
-  }
-
-  if (PESAPAL_ROUTABLE_METHODS.has(trimmedMethod)) {
-    return 'PESAPAL';
+    return '';
   }
 
   return trimmedMethod.toUpperCase();
@@ -44,7 +38,7 @@ export default function CheckoutForm({ cartItems }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         order_reference: createdOrder.reference,
-        provider: 'PESAPAL',
+        provider: normalizePaymentMethod(selectedMethod),
       }),
     });
 

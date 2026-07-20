@@ -18,6 +18,32 @@ from .models import Payment
 logger = logging.getLogger(__name__)
 
 
+class PaymentRoutingService:
+	"""Resolve a payment method to the processor that should handle it."""
+
+	PAYMENT_METHOD_TO_PROVIDER = {
+		"MPESA": Payment.Provider.PESAPAL,
+		"AIRTEL": Payment.Provider.PESAPAL,
+		"MASTERCARD": Payment.Provider.PESAPAL,
+		"VISACARDS": Payment.Provider.PESAPAL,
+	}
+
+	@staticmethod
+	def normalize_payment_method(payment_method: str | None) -> str:
+		return str(payment_method or "").strip().upper().replace(" ", "_")
+
+	@staticmethod
+	def resolve_provider(payment_method: str | None) -> str:
+		normalized_payment_method = PaymentRoutingService.normalize_payment_method(payment_method)
+		provider = PaymentRoutingService.PAYMENT_METHOD_TO_PROVIDER.get(normalized_payment_method)
+		if provider:
+			return provider
+
+		raise serializers.ValidationError(
+			{"payment_method": [f"Payment method '{payment_method}' is not connected to a processor yet."]}
+		)
+
+
 class PesapalService:
 	"""Pesapal V3 integration adapter for authentication and checkout creation."""
 
@@ -418,15 +444,16 @@ class PaymentService:
 	def initiate_payment(*, order_reference: str, provider: str) -> Payment:
 		order = PaymentService._get_order(order_reference)
 		PaymentService._validate_order_for_payment(order)
+		resolved_provider = PaymentRoutingService.resolve_provider(order.payment_method or provider)
 
 		try:
 			payment = Payment.objects.create(
 				order=order,
-				provider=provider,
+				provider=resolved_provider,
 				amount=order.total_amount,
 				currency=order.currency,
 			)
-			provider_adapter = PaymentService._get_provider_adapter(provider)
+			provider_adapter = PaymentService._get_provider_adapter(resolved_provider)
 			provider_result = provider_adapter.create_payment(order, payment)
 
 			payment.redirect_url = provider_result.get("redirect_url", "")
@@ -447,7 +474,7 @@ class PaymentService:
 				]
 			)
 
-			order.payment_method = provider
+			order.payment_method = PaymentRoutingService.normalize_payment_method(order.payment_method or provider)
 			if payment.provider_tracking_id:
 				order.pesapal_tracking_id = payment.provider_tracking_id
 			order.save(update_fields=["payment_method", "pesapal_tracking_id", "updated_at"])
