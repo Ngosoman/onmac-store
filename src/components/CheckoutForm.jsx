@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { paymentMethodGroups } from '../data/paymentMethods';
 
+const PESAPAL_SUPPORTED_METHODS = new Set(['Mpesa', 'Airtel', 'Mastercard', 'Visacards']);
+
 export default function CheckoutForm({ cartItems }) {
   const [selectedMethod, setSelectedMethod] = useState('Mpesa');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,6 +52,11 @@ export default function CheckoutForm({ cartItems }) {
 
     if (cartItems.length === 0) {
       setErrorMessage('Your cart is empty. Add items before checkout.');
+      return;
+    }
+
+    if (!PESAPAL_SUPPORTED_METHODS.has(selectedMethod)) {
+      setErrorMessage('For now, only Mpesa, Airtel, Mastercard, and Visacards are supported via Pesapal.');
       return;
     }
 
@@ -136,7 +143,7 @@ export default function CheckoutForm({ cartItems }) {
         </div>
         <p className="payment-note">Selected payment method: {selectedMethod}</p>
         <p className="payment-note">
-          Card details are collected securely on Pesapal after redirect.
+          Mpesa, Airtel, Mastercard, and Visacards are processed securely on Pesapal after redirect.
         </p>
       </div>
       <div className="form-grid">
