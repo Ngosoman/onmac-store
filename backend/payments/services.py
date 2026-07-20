@@ -25,6 +25,7 @@ class PesapalService:
 	REGISTER_IPN_ENDPOINT = "/api/URLSetup/RegisterIPN"
 	GET_IPN_LIST_ENDPOINT = "/api/URLSetup/GetIpnList"
 	SUBMIT_ORDER_ENDPOINT = "/api/Transactions/SubmitOrderRequest"
+	GET_TRANSACTION_STATUS_ENDPOINT = "/api/Transactions/GetTransactionStatus"
 
 	REQUEST_TIMEOUT = (10, 30)
 	CACHE_TTL_SECONDS = 60 * 60 * 24
@@ -305,6 +306,26 @@ class PesapalService:
 			"response_payload": response_data,
 		}
 
+	@staticmethod
+	def verify_transaction(order_tracking_id: str) -> dict[str, Any]:
+		"""Fetch latest transaction state from Pesapal for a tracking id."""
+
+		session = PesapalService._session()
+		token = PesapalService.authenticate(session=session)
+
+		response_data = PesapalService._request(
+			session=session,
+			method="GET",
+			url=f"{PesapalService._build_url(PesapalService.GET_TRANSACTION_STATUS_ENDPOINT)}?orderTrackingId={order_tracking_id}",
+			headers=PesapalService._authorization_header(token),
+			error_context="get_transaction_status",
+		)
+
+		if not isinstance(response_data, dict):
+			raise serializers.ValidationError({"detail": ["Invalid transaction status response from payment provider."]})
+
+		return response_data
+
 class PaymentService:
 	"""Application service for payment initiation and provider orchestration."""
 
@@ -331,6 +352,66 @@ class PaymentService:
 		if provider == Payment.Provider.PESAPAL:
 			return PesapalService
 		raise serializers.ValidationError({"provider": ["Unsupported payment provider."]})
+
+	@staticmethod
+	def _resolve_payment_for_notification(*, order_tracking_id: str, merchant_reference: str | None) -> Payment:
+		payment = Payment.objects.select_related("order").filter(provider_tracking_id=order_tracking_id).first()
+		if payment:
+			return payment
+
+		if merchant_reference:
+			payment = Payment.objects.select_related("order").filter(provider_reference=merchant_reference).order_by("-created_at").first()
+			if payment:
+				return payment
+
+		raise serializers.ValidationError({"detail": ["Payment record not found for provider notification."]})
+
+	@staticmethod
+	def _map_provider_status(status_payload: dict[str, Any]) -> tuple[str, str]:
+		provider_status = str(status_payload.get("payment_status_description") or "").strip().lower()
+
+		if "complete" in provider_status:
+			return Payment.Status.COMPLETED, Order.Status.PAID
+		if "cancel" in provider_status or "reverse" in provider_status:
+			return Payment.Status.CANCELLED, Order.Status.CANCELLED
+		if "fail" in provider_status or "declin" in provider_status or "invalid" in provider_status:
+			return Payment.Status.FAILED, Order.Status.FAILED
+
+		return Payment.Status.PENDING, Order.Status.PENDING
+
+	@staticmethod
+	@transaction.atomic
+	def reconcile_pesapal_notification(
+		*,
+		order_tracking_id: str,
+		merchant_reference: str | None = None,
+		notification_type: str | None = None,
+	) -> Payment:
+		"""Reconcile callback/IPN events by verifying status and updating Payment/Order."""
+
+		payment = PaymentService._resolve_payment_for_notification(
+			order_tracking_id=order_tracking_id,
+			merchant_reference=merchant_reference,
+		)
+		status_payload = PesapalService.verify_transaction(order_tracking_id)
+		payment_status, order_status = PaymentService._map_provider_status(status_payload)
+
+		merged_response = dict(payment.checkout_response or {})
+		merged_response["transaction_status"] = status_payload
+		if notification_type:
+			merged_response["notification_type"] = notification_type
+
+		payment.provider_tracking_id = order_tracking_id
+		payment.status = payment_status
+		payment.checkout_response = merged_response
+		payment.save(update_fields=["provider_tracking_id", "status", "checkout_response", "updated_at"])
+
+		order = payment.order
+		order.pesapal_tracking_id = order_tracking_id
+		order.status = order_status
+		order.save(update_fields=["pesapal_tracking_id", "status", "updated_at"])
+
+		return payment
 
 	@staticmethod
 	@transaction.atomic

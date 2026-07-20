@@ -122,3 +122,63 @@ class PaymentApiTests(TestCase):
 
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(response.data[0]["reference"], str(payment.reference))
+
+	def test_callback_endpoint_updates_payment_and_order_status(self):
+		payment = Payment.objects.create(
+			order=self.order,
+			provider=Payment.Provider.PESAPAL,
+			status=Payment.Status.PENDING,
+			amount=self.order.total_amount,
+			currency=self.order.currency,
+			provider_reference=self.order.merchant_reference,
+			provider_tracking_id="track-callback-001",
+		)
+
+		with patch("payments.services.PesapalService.verify_transaction") as mock_verify:
+			mock_verify.return_value = {
+				"payment_status_description": "Completed",
+				"status": "200",
+			}
+			response = self.client.get(
+				f"/api/payments/callback/?OrderTrackingId={payment.provider_tracking_id}&OrderMerchantReference={self.order.merchant_reference}&OrderNotificationType=CALLBACKURL"
+			)
+
+		payment.refresh_from_db()
+		self.order.refresh_from_db()
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(payment.status, Payment.Status.COMPLETED)
+		self.assertEqual(self.order.status, Order.Status.PAID)
+
+	def test_ipn_endpoint_updates_failed_status(self):
+		payment = Payment.objects.create(
+			order=self.order,
+			provider=Payment.Provider.PESAPAL,
+			status=Payment.Status.PENDING,
+			amount=self.order.total_amount,
+			currency=self.order.currency,
+			provider_reference=self.order.merchant_reference,
+			provider_tracking_id="track-ipn-001",
+		)
+
+		with patch("payments.services.PesapalService.verify_transaction") as mock_verify:
+			mock_verify.return_value = {
+				"payment_status_description": "Failed",
+				"status": "200",
+			}
+			response = self.client.post(
+				"/api/payments/ipn/",
+				data={
+					"OrderTrackingId": payment.provider_tracking_id,
+					"OrderMerchantReference": self.order.merchant_reference,
+					"OrderNotificationType": "IPNCHANGE",
+				},
+				format="json",
+			)
+
+		payment.refresh_from_db()
+		self.order.refresh_from_db()
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(payment.status, Payment.Status.FAILED)
+		self.assertEqual(self.order.status, Order.Status.FAILED)
