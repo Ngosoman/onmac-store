@@ -22,6 +22,7 @@ class PaymentRoutingService:
 	"""Resolve a payment method to the processor that should handle it."""
 
 	PAYMENT_METHOD_TO_PROVIDER = {
+		"PESAPAL": Payment.Provider.PESAPAL,
 		"MPESA": Payment.Provider.PESAPAL,
 		"AIRTEL": Payment.Provider.PESAPAL,
 		"MASTERCARD": Payment.Provider.PESAPAL,
@@ -35,6 +36,8 @@ class PaymentRoutingService:
 	@staticmethod
 	def resolve_provider(payment_method: str | None) -> str:
 		normalized_payment_method = PaymentRoutingService.normalize_payment_method(payment_method)
+		if normalized_payment_method == Payment.Provider.PESAPAL:
+			return Payment.Provider.PESAPAL
 		provider = PaymentRoutingService.PAYMENT_METHOD_TO_PROVIDER.get(normalized_payment_method)
 		if provider:
 			return provider
