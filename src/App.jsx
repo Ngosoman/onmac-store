@@ -5,9 +5,14 @@ import ProductGrid from './components/ProductGrid';
 import CartSection from './components/CartSection';
 import CheckoutForm from './components/CheckoutForm';
 import Footer from './components/Footer';
+import PaymentResult from './components/PaymentResult';
 import { products } from './data/products';
 
 export default function App() {
+  if (window.location.pathname.startsWith('/payment-result')) {
+    return <PaymentResult />;
+  }
+
   const [cart, setCart] = useState([]);
 
   const cartCount = cart.reduce((total, item) => total + item.quantity, 0);

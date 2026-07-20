@@ -146,7 +146,8 @@ class PaymentApiTests(TestCase):
 		payment.refresh_from_db()
 		self.order.refresh_from_db()
 
-		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.status_code, 302)
+		self.assertIn("payment-result", response["Location"])
 		self.assertEqual(payment.status, Payment.Status.COMPLETED)
 		self.assertEqual(self.order.status, Order.Status.PAID)
 

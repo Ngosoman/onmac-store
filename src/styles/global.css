@@ -383,6 +383,28 @@ input {
   margin-top: 18px;
 }
 
+.payment-result-card {
+  margin-top: 48px;
+  border-radius: 28px;
+  padding: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(18, 18, 18, 0.72);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.24);
+}
+
+.payment-result-grid {
+  margin: 20px 0;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.payment-result-grid p {
+  margin: 8px 0;
+}
+
 .site-footer {
   margin-top: 28px;
   display: flex;
