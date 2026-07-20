@@ -1,4 +1,5 @@
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.test import TestCase
 from rest_framework import serializers
@@ -29,10 +30,21 @@ class PaymentServiceTests(TestCase):
 		)
 
 	def test_initiate_payment_uses_order_totals_and_creates_pending_payment(self):
-		payment = PaymentService.initiate_payment(
-			order_reference=str(self.order.reference),
-			provider=Payment.Provider.PESAPAL,
-		)
+		with patch("payments.services.PesapalService.create_payment") as mock_create_payment:
+			mock_create_payment.return_value = {
+				"provider": Payment.Provider.PESAPAL,
+				"merchant_reference": self.order.merchant_reference,
+				"redirect_url": "https://cybqa.pesapal.com/pesapaliframe/checkout/abc",
+				"provider_reference": self.order.merchant_reference,
+				"provider_tracking_id": "b945e4af-80a5-4ec1-8706-e03f8332fb04",
+				"status": Payment.Status.PENDING,
+				"request_payload": {"id": self.order.merchant_reference},
+				"response_payload": {"status": "200"},
+			}
+			payment = PaymentService.initiate_payment(
+				order_reference=str(self.order.reference),
+				provider=Payment.Provider.PESAPAL,
+			)
 
 		self.assertEqual(payment.amount, Decimal("350.00"))
 		self.assertEqual(payment.currency, "KES")
@@ -69,20 +81,42 @@ class PaymentApiTests(TestCase):
 		)
 
 	def test_post_initiates_payment(self):
-		response = self.client.post(
-			"/api/payments/",
-			data={"order_reference": str(self.order.reference), "provider": "PESAPAL"},
-			format="json",
-		)
+		with patch("payments.services.PesapalService.create_payment") as mock_create_payment:
+			mock_create_payment.return_value = {
+				"provider": Payment.Provider.PESAPAL,
+				"merchant_reference": self.order.merchant_reference,
+				"redirect_url": "https://cybqa.pesapal.com/pesapaliframe/checkout/abc",
+				"provider_reference": self.order.merchant_reference,
+				"provider_tracking_id": "tracking-001",
+				"status": Payment.Status.PENDING,
+				"request_payload": {"id": self.order.merchant_reference},
+				"response_payload": {"status": "200"},
+			}
+			response = self.client.post(
+				"/api/payments/",
+				data={"order_reference": str(self.order.reference), "provider": "PESAPAL"},
+				format="json",
+			)
 
 		self.assertEqual(response.status_code, 201)
 		self.assertEqual(response.data["amount"], "120.00")
 
 	def test_get_order_payments_returns_created_payments(self):
-		payment = PaymentService.initiate_payment(
-			order_reference=str(self.order.reference),
-			provider=Payment.Provider.PESAPAL,
-		)
+		with patch("payments.services.PesapalService.create_payment") as mock_create_payment:
+			mock_create_payment.return_value = {
+				"provider": Payment.Provider.PESAPAL,
+				"merchant_reference": self.order.merchant_reference,
+				"redirect_url": "https://cybqa.pesapal.com/pesapaliframe/checkout/abc",
+				"provider_reference": self.order.merchant_reference,
+				"provider_tracking_id": "tracking-002",
+				"status": Payment.Status.PENDING,
+				"request_payload": {"id": self.order.merchant_reference},
+				"response_payload": {"status": "200"},
+			}
+			payment = PaymentService.initiate_payment(
+				order_reference=str(self.order.reference),
+				provider=Payment.Provider.PESAPAL,
+			)
 
 		response = self.client.get(f"/api/payments/order/{self.order.reference}/")
 

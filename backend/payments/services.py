@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+import logging
+from decimal import Decimal
 from typing import Any
 
+import requests
+from django.conf import settings
+from django.core.cache import cache
 from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
@@ -10,28 +15,310 @@ from orders.models import Order
 from .models import Payment
 
 
+logger = logging.getLogger(__name__)
+
+
 class PesapalService:
-	"""Pesapal adapter placeholder for future external API integration."""
+	"""Pesapal V3 integration adapter for authentication and checkout creation."""
+
+	AUTH_ENDPOINT = "/api/Auth/RequestToken"
+	REGISTER_IPN_ENDPOINT = "/api/URLSetup/RegisterIPN"
+	GET_IPN_LIST_ENDPOINT = "/api/URLSetup/GetIpnList"
+	SUBMIT_ORDER_ENDPOINT = "/api/Transactions/SubmitOrderRequest"
+
+	REQUEST_TIMEOUT = (10, 30)
+	CACHE_TTL_SECONDS = 60 * 60 * 24
+	IPN_NOTIFICATION_TYPE = "GET"
+
+	@staticmethod
+	def _session() -> requests.Session:
+		session = requests.Session()
+		session.headers.update(
+			{
+				"Accept": "application/json",
+				"Content-Type": "application/json",
+			}
+		)
+		return session
+
+	@staticmethod
+	def _get_setting(name: str, *, required: bool = True, default: str = "") -> str:
+		value = getattr(settings, name, default)
+		if required and not value:
+			raise serializers.ValidationError({"detail": [f"Missing required setting: {name}."]})
+		return str(value)
+
+	@staticmethod
+	def _base_url() -> str:
+		base_url = PesapalService._get_setting("PESAPAL_BASE_URL")
+		return base_url.rstrip("/")
+
+	@staticmethod
+	def _build_url(endpoint: str) -> str:
+		return f"{PesapalService._base_url()}{endpoint}"
+
+	@staticmethod
+	def _safe_provider_message(data: Any) -> str:
+		if isinstance(data, dict):
+			message = data.get("message")
+			if isinstance(message, str) and message.strip():
+				return message.strip()
+		return "Payment provider request failed."
+
+	@staticmethod
+	def _cache_key_for_ipn(url: str) -> str:
+		return f"pesapal:ipn_id:{url}"
+
+	@staticmethod
+	def _request(
+		*,
+		session: requests.Session,
+		method: str,
+		url: str,
+		headers: dict[str, str] | None = None,
+		payload: dict[str, Any] | None = None,
+		error_context: str,
+	) -> dict[str, Any] | list[Any]:
+		try:
+			response = session.request(
+				method=method,
+				url=url,
+				headers=headers,
+				json=payload,
+				timeout=PesapalService.REQUEST_TIMEOUT,
+			)
+		except requests.Timeout as exc:
+			logger.exception("Pesapal request timed out during %s", error_context)
+			raise serializers.ValidationError({"detail": ["Payment provider timeout. Please retry."]}) from exc
+		except requests.ConnectionError as exc:
+			logger.exception("Pesapal connection error during %s", error_context)
+			raise serializers.ValidationError({"detail": ["Payment provider is unreachable. Please retry."]}) from exc
+		except requests.RequestException as exc:
+			logger.exception("Pesapal transport error during %s", error_context)
+			raise serializers.ValidationError({"detail": ["Unable to contact payment provider right now."]}) from exc
+
+		response_data: Any
+		try:
+			response_data = response.json()
+		except ValueError as exc:
+			logger.error("Pesapal returned non-JSON response during %s with status %s", error_context, response.status_code)
+			raise serializers.ValidationError({"detail": ["Unexpected response from payment provider."]}) from exc
+
+		if response.status_code in (401, 403):
+			logger.warning("Pesapal authorization failure during %s with status %s", error_context, response.status_code)
+			raise serializers.ValidationError({"detail": ["Payment provider authentication failed."]})
+
+		if response.status_code == 400:
+			logger.warning("Pesapal validation failure during %s", error_context)
+			message = PesapalService._safe_provider_message(response_data)
+			raise serializers.ValidationError({"detail": [message]})
+
+		if response.status_code >= 500:
+			logger.error("Pesapal server failure during %s with status %s", error_context, response.status_code)
+			raise serializers.ValidationError({"detail": ["Payment provider is temporarily unavailable."]})
+
+		if response.status_code >= 300:
+			logger.error("Pesapal unexpected status %s during %s", response.status_code, error_context)
+			raise serializers.ValidationError({"detail": ["Payment provider request failed."]})
+
+		return response_data
+
+	@staticmethod
+	def _authorization_header(token: str) -> dict[str, str]:
+		return {"Authorization": f"Bearer {token}"}
+
+	@staticmethod
+	def _build_billing_address(order: Order) -> dict[str, Any]:
+		name_parts = [part for part in order.customer_name.split(" ") if part]
+		first_name = name_parts[0] if name_parts else "Customer"
+		last_name = " ".join(name_parts[1:]) if len(name_parts) > 1 else ""
+
+		return {
+			"phone_number": order.customer_phone or "",
+			"email_address": order.customer_email,
+			"country_code": PesapalService._get_setting("PESAPAL_COUNTRY_CODE", required=False, default="KE"),
+			"first_name": first_name,
+			"middle_name": "",
+			"last_name": last_name,
+			"line_1": (order.shipping_address or "").strip()[:120],
+			"line_2": "",
+			"city": "",
+			"state": "",
+			"postal_code": "",
+			"zip_code": "",
+		}
+
+	@staticmethod
+	def authenticate(*, session: requests.Session | None = None) -> str:
+		"""Authenticate against Pesapal V3 and return bearer token."""
+
+		consumer_key = PesapalService._get_setting("PESAPAL_CONSUMER_KEY")
+		consumer_secret = PesapalService._get_setting("PESAPAL_CONSUMER_SECRET")
+		session = session or PesapalService._session()
+
+		logger.info("Authenticating with Pesapal")
+		response_data = PesapalService._request(
+			session=session,
+			method="POST",
+			url=PesapalService._build_url(PesapalService.AUTH_ENDPOINT),
+			payload={
+				"consumer_key": consumer_key,
+				"consumer_secret": consumer_secret,
+			},
+			error_context="authenticate",
+		)
+
+		if not isinstance(response_data, dict):
+			raise serializers.ValidationError({"detail": ["Invalid authentication response from payment provider."]})
+
+		token = response_data.get("token")
+		if not token:
+			logger.error("Pesapal authentication response missing token")
+			raise serializers.ValidationError({"detail": ["Failed to authenticate payment provider."]})
+
+		logger.info("Pesapal authentication successful")
+		return str(token)
+
+	@staticmethod
+	def register_ipn(*, session: requests.Session | None = None, token: str | None = None) -> str:
+		"""Get or register IPN URL and return notification_id (ipn_id)."""
+
+		ipn_url = PesapalService._get_setting("PESAPAL_IPN_URL")
+		cache_key = PesapalService._cache_key_for_ipn(ipn_url)
+		cached_ipn_id = cache.get(cache_key)
+		if cached_ipn_id:
+			return str(cached_ipn_id)
+
+		session = session or PesapalService._session()
+		access_token = token or PesapalService.authenticate(session=session)
+		headers = PesapalService._authorization_header(access_token)
+
+		logger.info("Checking existing Pesapal IPN registrations")
+		ipn_list_response = PesapalService._request(
+			session=session,
+			method="GET",
+			url=PesapalService._build_url(PesapalService.GET_IPN_LIST_ENDPOINT),
+			headers=headers,
+			error_context="get_ipn_list",
+		)
+
+		if isinstance(ipn_list_response, list):
+			for ipn_entry in ipn_list_response:
+				if not isinstance(ipn_entry, dict):
+					continue
+				if ipn_entry.get("url") == ipn_url and ipn_entry.get("ipn_notification_type") == PesapalService.IPN_NOTIFICATION_TYPE:
+					ipn_id = ipn_entry.get("ipn_id")
+					if ipn_id:
+						cache.set(cache_key, str(ipn_id), PesapalService.CACHE_TTL_SECONDS)
+						return str(ipn_id)
+
+		logger.info("Registering Pesapal IPN URL")
+		register_response = PesapalService._request(
+			session=session,
+			method="POST",
+			url=PesapalService._build_url(PesapalService.REGISTER_IPN_ENDPOINT),
+			headers=headers,
+			payload={
+				"url": ipn_url,
+				"ipn_notification_type": PesapalService.IPN_NOTIFICATION_TYPE,
+			},
+			error_context="register_ipn",
+		)
+
+		if not isinstance(register_response, dict):
+			raise serializers.ValidationError({"detail": ["Invalid IPN registration response from payment provider."]})
+
+		ipn_id = register_response.get("ipn_id")
+		if not ipn_id:
+			error_data = register_response.get("error")
+			if isinstance(error_data, dict) and error_data.get("code") == "duplicate_ipn_url":
+				logger.info("Pesapal reported duplicate IPN URL, resolving via GetIpnList")
+				cache.delete(cache_key)
+				return PesapalService.register_ipn(session=session, token=access_token)
+			raise serializers.ValidationError({"detail": ["Failed to register payment notification endpoint."]})
+
+		cache.set(cache_key, str(ipn_id), PesapalService.CACHE_TTL_SECONDS)
+		return str(ipn_id)
 
 	@staticmethod
 	def create_payment(order: Order, payment: Payment) -> dict[str, Any]:
+		"""Create a Pesapal checkout session and return normalized payment details."""
+
+		session = PesapalService._session()
+		token = PesapalService.authenticate(session=session)
+		notification_id = PesapalService.register_ipn(session=session, token=token)
+		callback_url = PesapalService._get_setting("PESAPAL_CALLBACK_URL")
+
+		description = f"Order {order.reference} payment"
+		request_payload: dict[str, Any] = {
+			"id": order.merchant_reference,
+			"currency": order.currency,
+			"amount": float(Decimal(order.total_amount).quantize(Decimal("0.01"))),
+			"description": description[:100],
+			"callback_url": callback_url,
+			"notification_id": notification_id,
+			"billing_address": PesapalService._build_billing_address(order),
+		}
+
+		redirect_mode = PesapalService._get_setting("PESAPAL_REDIRECT_MODE", required=False, default="").strip().upper()
+		if redirect_mode in {"TOP_WINDOW", "PARENT_WINDOW"}:
+			request_payload["redirect_mode"] = redirect_mode
+
+		cancellation_url = PesapalService._get_setting("PESAPAL_CANCELLATION_URL", required=False, default="").strip()
+		if cancellation_url:
+			request_payload["cancellation_url"] = cancellation_url
+
+		branch = PesapalService._get_setting("PESAPAL_BRANCH", required=False, default="").strip()
+		if branch:
+			request_payload["branch"] = branch
+
+		logger.info("Submitting Pesapal order request for payment %s and order %s", payment.reference, order.reference)
+		response_data = PesapalService._request(
+			session=session,
+			method="POST",
+			url=PesapalService._build_url(PesapalService.SUBMIT_ORDER_ENDPOINT),
+			headers=PesapalService._authorization_header(token),
+			payload=request_payload,
+			error_context="submit_order_request",
+		)
+
+		if not isinstance(response_data, dict):
+			raise serializers.ValidationError({"detail": ["Invalid checkout response from payment provider."]})
+
+		redirect_url = response_data.get("redirect_url")
+		order_tracking_id = response_data.get("order_tracking_id")
+		merchant_reference = response_data.get("merchant_reference")
+
+		if not redirect_url or not order_tracking_id:
+			logger.error("Pesapal submit order response missing required fields for payment %s", payment.reference)
+			raise serializers.ValidationError({"detail": ["Unable to initialize checkout session."]})
+
+		logger.info("Pesapal checkout initialized for payment %s", payment.reference)
 		return {
 			"provider": Payment.Provider.PESAPAL,
-			"merchant_reference": order.merchant_reference,
-			"redirect_url": f"https://pay.pesapal.example/checkout/{payment.reference}",
-			"provider_reference": order.merchant_reference,
-			"provider_tracking_id": None,
+			"merchant_reference": merchant_reference or order.merchant_reference,
+			"redirect_url": str(redirect_url),
+			"provider_reference": merchant_reference or order.merchant_reference,
+			"provider_tracking_id": str(order_tracking_id),
 			"status": Payment.Status.PENDING,
-			"request_payload": {
-				"order_reference": str(order.reference),
-				"amount": str(order.total_amount),
-				"currency": order.currency,
-				"customer_email": order.customer_email,
-			},
-			"response_payload": {
-				"message": "Pesapal checkout session initialized.",
-			},
+			"request_payload": request_payload,
+			"response_payload": response_data,
 		}
+
+	@staticmethod
+	def verify_transaction(order_tracking_id: str) -> dict[str, Any]:
+		"""Future extension point for GetTransactionStatus integration."""
+		raise NotImplementedError("verify_transaction is not implemented yet.")
+
+	@staticmethod
+	def refund(payment: Payment, amount: Decimal | None = None) -> dict[str, Any]:
+		"""Future extension point for refunds."""
+		raise NotImplementedError("refund is not implemented yet.")
+
+	@staticmethod
+	def cancel_payment(payment: Payment) -> dict[str, Any]:
+		"""Future extension point for payment cancellations."""
+		raise NotImplementedError("cancel_payment is not implemented yet.")
 
 
 class PaymentService:

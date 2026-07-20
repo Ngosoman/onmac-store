@@ -12,8 +12,13 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 
+import environ
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+env = environ.Env()
+environ.Env.read_env(BASE_DIR / ".env")
 
 
 # Quick-start development settings - unsuitable for production
@@ -124,3 +129,14 @@ STATIC_URL = 'static/'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Pesapal configuration
+PESAPAL_BASE_URL = env("PESAPAL_BASE_URL", default="")
+PESAPAL_CONSUMER_KEY = env("PESAPAL_CONSUMER_KEY", default="")
+PESAPAL_CONSUMER_SECRET = env("PESAPAL_CONSUMER_SECRET", default="")
+PESAPAL_CALLBACK_URL = env("PESAPAL_CALLBACK_URL", default="")
+PESAPAL_IPN_URL = env("PESAPAL_IPN_URL", default="")
+PESAPAL_COUNTRY_CODE = env("PESAPAL_COUNTRY_CODE", default="KE")
+PESAPAL_REDIRECT_MODE = env("PESAPAL_REDIRECT_MODE", default="")
+PESAPAL_CANCELLATION_URL = env("PESAPAL_CANCELLATION_URL", default="")
+PESAPAL_BRANCH = env("PESAPAL_BRANCH", default="")
