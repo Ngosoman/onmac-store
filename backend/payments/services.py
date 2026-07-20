@@ -305,22 +305,6 @@ class PesapalService:
 			"response_payload": response_data,
 		}
 
-	@staticmethod
-	def verify_transaction(order_tracking_id: str) -> dict[str, Any]:
-		"""Future extension point for GetTransactionStatus integration."""
-		raise NotImplementedError("verify_transaction is not implemented yet.")
-
-	@staticmethod
-	def refund(payment: Payment, amount: Decimal | None = None) -> dict[str, Any]:
-		"""Future extension point for refunds."""
-		raise NotImplementedError("refund is not implemented yet.")
-
-	@staticmethod
-	def cancel_payment(payment: Payment) -> dict[str, Any]:
-		"""Future extension point for payment cancellations."""
-		raise NotImplementedError("cancel_payment is not implemented yet.")
-
-
 class PaymentService:
 	"""Application service for payment initiation and provider orchestration."""
 
