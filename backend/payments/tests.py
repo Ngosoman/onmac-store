@@ -61,6 +61,27 @@ class PaymentServiceTests(TestCase):
 				provider=Payment.Provider.PESAPAL,
 			)
 
+	def test_initiate_payment_uses_nowpayments_adapter(self):
+		with patch("payments.services.NowPaymentsService.create_payment") as mock_create_payment:
+			mock_create_payment.return_value = {
+				"provider": Payment.Provider.NOWPAYMENTS,
+				"merchant_reference": self.order.merchant_reference,
+				"redirect_url": "https://nowpayments.io/payment/abc",
+				"provider_reference": "invoice-001",
+				"provider_tracking_id": "invoice-001",
+				"status": Payment.Status.PENDING,
+				"request_payload": {"order_id": str(self.order.reference)},
+				"response_payload": {"payment_id": "invoice-001", "status": "pending"},
+			}
+			payment = PaymentService.initiate_payment(
+				order_reference=str(self.order.reference),
+				provider=Payment.Provider.NOWPAYMENTS,
+			)
+
+		self.assertEqual(payment.provider, Payment.Provider.NOWPAYMENTS)
+		self.assertEqual(payment.status, Payment.Status.PENDING)
+		self.assertEqual(payment.provider_reference, "invoice-001")
+
 
 class PaymentApiTests(TestCase):
 	def setUp(self):
@@ -183,3 +204,36 @@ class PaymentApiTests(TestCase):
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(payment.status, Payment.Status.FAILED)
 		self.assertEqual(self.order.status, Order.Status.FAILED)
+
+	def test_nowpayments_webhook_marks_payment_completed_and_order_paid(self):
+		payment = Payment.objects.create(
+			order=self.order,
+			provider=Payment.Provider.NOWPAYMENTS,
+			status=Payment.Status.PENDING,
+			amount=self.order.total_amount,
+			currency=self.order.currency,
+			provider_reference="invoice-900",
+		)
+
+		with patch("payments.services.NowPaymentsService.verify_payment") as mock_verify:
+			mock_verify.return_value = {
+				"payment_id": "invoice-900",
+				"payment_status": "finished",
+				"order_id": str(self.order.reference),
+			}
+			response = self.client.post(
+				"/api/payments/ipn/",
+				data={
+					"payment_id": "invoice-900",
+					"payment_status": "finished",
+					"order_id": str(self.order.reference),
+				},
+				format="json",
+			)
+
+		payment.refresh_from_db()
+		self.order.refresh_from_db()
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(payment.status, Payment.Status.COMPLETED)
+		self.assertEqual(self.order.status, Order.Status.PAID)

@@ -8,6 +8,7 @@ from orders.models import Order
 class Payment(models.Model):
 	class Provider(models.TextChoices):
 		PESAPAL = "PESAPAL", "Pesapal"
+		NOWPAYMENTS = "NOWPAYMENTS", "NOWPayments"
 
 	class Status(models.TextChoices):
 		INITIALIZED = "initialized", "Initialized"

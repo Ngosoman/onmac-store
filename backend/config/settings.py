@@ -37,7 +37,7 @@ SECRET_KEY = 'django-insecure-887!g)ly!k4hs6xpzyhu4n#+a)jy#)$cts+0@6=wc%9g*yzfj6
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1", "testserver"])
 
 
 # Application definition
@@ -147,4 +147,10 @@ PESAPAL_COUNTRY_CODE = env("PESAPAL_COUNTRY_CODE", default="KE")
 PESAPAL_REDIRECT_MODE = env("PESAPAL_REDIRECT_MODE", default="")
 PESAPAL_CANCELLATION_URL = env("PESAPAL_CANCELLATION_URL", default="")
 PESAPAL_BRANCH = env("PESAPAL_BRANCH", default="")
+
+# NOWPayments configuration
+NOWPAYMENTS_API_KEY = env("NOWPAYMENTS_API_KEY", default="")
+NOWPAYMENTS_BASE_URL = env("NOWPAYMENTS_BASE_URL", default="https://api.nowpayments.io/v1")
+NOWPAYMENTS_IPN_SECRET = env("NOWPAYMENTS_IPN_SECRET", default="")
+NOWPAYMENTS_IPN_URL = env("NOWPAYMENTS_IPN_URL", default="")
 FRONTEND_PAYMENT_RESULT_URL = env("FRONTEND_PAYMENT_RESULT_URL", default="http://localhost:5173/payment-result")

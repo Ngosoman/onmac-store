@@ -56,18 +56,23 @@ class _PesapalNotificationMixin:
 		merchant_reference = source_data.get("OrderMerchantReference") or source_data.get("order_merchant_reference")
 		notification_type = source_data.get("OrderNotificationType") or source_data.get("order_notification_type")
 
-		if not order_tracking_id:
-			raise exceptions.ValidationError({"OrderTrackingId": ["This field is required."]})
+		if not order_tracking_id and not (source_data.get("payment_id") or source_data.get("id") or source_data.get("invoice_id")):
+			return {
+				"order_tracking_id": None,
+				"merchant_reference": str(merchant_reference) if merchant_reference else None,
+				"notification_type": str(notification_type) if notification_type else None,
+			}
 
 		return {
-			"order_tracking_id": str(order_tracking_id),
+			"order_tracking_id": str(order_tracking_id) if order_tracking_id else None,
 			"merchant_reference": str(merchant_reference) if merchant_reference else None,
 			"notification_type": str(notification_type) if notification_type else None,
 		}
 
 	def _reconcile(self, source_data):
 		notification_data = self._extract_notification_data(source_data)
-		payment = PaymentService.reconcile_pesapal_notification(**notification_data)
+		payload = dict(source_data)
+		payment = PaymentService.reconcile_notification(payload=payload, headers=dict(getattr(self.request, "headers", {}) or {}))
 		return Response(
 			{
 				"message": "Payment notification processed.",
@@ -83,7 +88,7 @@ class _PesapalNotificationMixin:
 class PaymentCallbackAPIView(_PesapalNotificationMixin, APIView):
 	def get(self, request, *args, **kwargs):
 		notification_data = self._extract_notification_data(request.query_params)
-		payment = PaymentService.reconcile_pesapal_notification(**notification_data)
+		payment = PaymentService.reconcile_notification(payload=dict(request.query_params), headers=dict(request.headers))
 
 		result_url = str(getattr(settings, "FRONTEND_PAYMENT_RESULT_URL", "")).strip()
 		if not result_url:

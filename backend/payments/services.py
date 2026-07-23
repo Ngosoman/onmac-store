@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import hmac
 import logging
 from decimal import Decimal
 from typing import Any
@@ -27,6 +29,8 @@ class PaymentRoutingService:
 		"AIRTEL": Payment.Provider.PESAPAL,
 		"MASTERCARD": Payment.Provider.PESAPAL,
 		"VISACARDS": Payment.Provider.PESAPAL,
+		"NOWPAYMENTS": Payment.Provider.NOWPAYMENTS,
+		"CRYPTO": Payment.Provider.NOWPAYMENTS,
 	}
 
 	@staticmethod
@@ -36,8 +40,8 @@ class PaymentRoutingService:
 	@staticmethod
 	def resolve_provider(payment_method: str | None) -> str:
 		normalized_payment_method = PaymentRoutingService.normalize_payment_method(payment_method)
-		if normalized_payment_method == Payment.Provider.PESAPAL:
-			return Payment.Provider.PESAPAL
+		if normalized_payment_method in {Payment.Provider.PESAPAL, Payment.Provider.NOWPAYMENTS}:
+			return normalized_payment_method
 		provider = PaymentRoutingService.PAYMENT_METHOD_TO_PROVIDER.get(normalized_payment_method)
 		if provider:
 			return provider
@@ -355,6 +359,242 @@ class PesapalService:
 
 		return response_data
 
+class NowPaymentsService:
+	"""NOWPayments integration adapter for crypto invoice creation and webhook verification."""
+
+	CREATE_PAYMENT_ENDPOINT = "/payment"
+	GET_PAYMENT_ENDPOINT = "/payment/{payment_id}"
+	REQUEST_TIMEOUT = (10, 30)
+
+	@staticmethod
+	def _session() -> requests.Session:
+		session = requests.Session()
+		session.headers.update(
+			{
+				"Accept": "application/json",
+				"Content-Type": "application/json",
+			}
+		)
+		return session
+
+	@staticmethod
+	def _get_setting(name: str, *, required: bool = True, default: str = "") -> str:
+		value = getattr(settings, name, default)
+		if required and not value:
+			raise serializers.ValidationError({"detail": [f"Missing required setting: {name}."]})
+		return str(value)
+
+	@staticmethod
+	def _base_url() -> str:
+		base_url = NowPaymentsService._get_setting("NOWPAYMENTS_BASE_URL")
+		return base_url.rstrip("/")
+
+	@staticmethod
+	def _build_url(endpoint: str) -> str:
+		return f"{NowPaymentsService._base_url()}{endpoint}"
+
+	@staticmethod
+	def _request(
+		*,
+		session: requests.Session,
+		method: str,
+		url: str,
+		headers: dict[str, str] | None = None,
+		payload: dict[str, Any] | None = None,
+		error_context: str,
+	) -> dict[str, Any] | list[Any]:
+		try:
+			response = session.request(
+				method=method,
+				url=url,
+				headers=headers,
+				json=payload,
+				timeout=NowPaymentsService.REQUEST_TIMEOUT,
+			)
+		except requests.Timeout as exc:
+			logger.exception("NOWPayments request timed out during %s", error_context)
+			raise serializers.ValidationError({"detail": ["Payment provider timeout. Please retry."]}) from exc
+		except requests.ConnectionError as exc:
+			logger.exception("NOWPayments connection error during %s", error_context)
+			raise serializers.ValidationError({"detail": ["Payment provider is unreachable. Please retry."]}) from exc
+		except requests.RequestException as exc:
+			logger.exception("NOWPayments transport error during %s", error_context)
+			raise serializers.ValidationError({"detail": ["Unable to contact payment provider right now."]}) from exc
+
+		try:
+			response_data: Any = response.json()
+		except ValueError as exc:
+			logger.error("NOWPayments returned non-JSON response during %s with status %s", error_context, response.status_code)
+			raise serializers.ValidationError({"detail": ["Unexpected response from payment provider."]}) from exc
+
+		if response.status_code in (401, 403):
+			logger.warning("NOWPayments authorization failure during %s with status %s", error_context, response.status_code)
+			raise serializers.ValidationError({"detail": ["Payment provider authentication failed."]})
+
+		if response.status_code >= 500:
+			logger.error("NOWPayments server failure during %s with status %s", error_context, response.status_code)
+			raise serializers.ValidationError({"detail": ["Payment provider is temporarily unavailable."]})
+
+		if response.status_code >= 400:
+			logger.warning("NOWPayments request failure during %s with status %s", error_context, response.status_code)
+			message = response_data.get("message") if isinstance(response_data, dict) else "Payment provider request failed."
+			raise serializers.ValidationError({"detail": [str(message)]})
+
+		return response_data
+
+	@staticmethod
+	def _authorization_header() -> dict[str, str]:
+		api_key = NowPaymentsService._get_setting("NOWPAYMENTS_API_KEY")
+		return {"x-api-key": api_key}
+
+	@staticmethod
+	def _extract_payment_url(response_data: dict[str, Any]) -> str:
+		for field_name in ("invoice_url", "payment_url", "pay_url", "url", "link"):
+			value = response_data.get(field_name)
+			if isinstance(value, str) and value.strip():
+				return value.strip()
+		return ""
+
+	@staticmethod
+	def _extract_payment_id(response_data: dict[str, Any]) -> str:
+		for field_name in ("payment_id", "id", "invoice_id"):
+			value = response_data.get(field_name)
+			if isinstance(value, str) and value.strip():
+				return value.strip()
+		return ""
+
+	@staticmethod
+	def _normalize_status(raw_status: Any) -> str:
+		status_text = str(raw_status or "").strip().lower()
+		if status_text in {"finished", "confirmed", "complete", "completed"}:
+			return Payment.Status.COMPLETED
+		if status_text in {"waiting", "pending", "in_progress", "processing", "partially_paid"}:
+			return Payment.Status.PENDING
+		if status_text in {"failed", "expired", "cancelled", "canceled"}:
+			return Payment.Status.FAILED
+		return Payment.Status.PENDING
+
+	@staticmethod
+	def create_payment(order: Order, payment: Payment) -> dict[str, Any]:
+		"""Create a NOWPayments invoice and return normalized payment details."""
+
+		session = NowPaymentsService._session()
+		request_payload: dict[str, Any] = {
+			"price_amount": float(Decimal(order.total_amount).quantize(Decimal("0.01"))),
+			"price_currency": str(order.currency).upper(),
+			"order_id": str(order.reference),
+			"order_description": f"Order {order.reference} payment",
+			"ipn_callback_url": getattr(settings, "NOWPAYMENTS_IPN_URL", "") or getattr(settings, "PESAPAL_IPN_URL", ""),
+		}
+
+		response_data = NowPaymentsService._request(
+			session=session,
+			method="POST",
+			url=NowPaymentsService._build_url(NowPaymentsService.CREATE_PAYMENT_ENDPOINT),
+			headers=NowPaymentsService._authorization_header(),
+			payload=request_payload,
+			error_context="create_payment",
+		)
+
+		if not isinstance(response_data, dict):
+			raise serializers.ValidationError({"detail": ["Invalid checkout response from payment provider."]})
+
+		payment_id = NowPaymentsService._extract_payment_id(response_data)
+		redirect_url = NowPaymentsService._extract_payment_url(response_data)
+		provider_status = NowPaymentsService._normalize_status(response_data.get("payment_status") or response_data.get("status"))
+
+		if not payment_id:
+			raise serializers.ValidationError({"detail": ["Unable to initialize checkout session."]})
+
+		return {
+			"provider": Payment.Provider.NOWPAYMENTS,
+			"merchant_reference": order.merchant_reference,
+			"redirect_url": redirect_url,
+			"provider_reference": payment_id,
+			"provider_tracking_id": payment_id,
+			"status": provider_status,
+			"request_payload": request_payload,
+			"response_payload": response_data,
+		}
+
+	@staticmethod
+	def verify_payment(payment_id: str) -> dict[str, Any]:
+		"""Fetch the latest payment status from NOWPayments for a payment identifier."""
+
+		session = NowPaymentsService._session()
+		response_data = NowPaymentsService._request(
+			session=session,
+			method="GET",
+			url=NowPaymentsService._build_url(NowPaymentsService.GET_PAYMENT_ENDPOINT.format(payment_id=payment_id)),
+			headers=NowPaymentsService._authorization_header(),
+			error_context="verify_payment",
+		)
+
+		if not isinstance(response_data, dict):
+			raise serializers.ValidationError({"detail": ["Invalid transaction status response from payment provider."]})
+
+		return response_data
+
+	@staticmethod
+	def _verify_signature(payload: dict[str, Any] | None, headers: dict[str, str] | None = None, body: bytes | str | None = None) -> bool:
+		secret = NowPaymentsService._get_setting("NOWPAYMENTS_IPN_SECRET", required=False, default="")
+		if not secret:
+			return True
+
+		body_bytes = body if isinstance(body, (bytes, bytearray)) else (body.encode("utf-8") if isinstance(body, str) else str(payload or {}).encode("utf-8"))
+		signature = ""
+		if headers:
+			for header_name in ("x-nowpayments-sig", "X-Nowpayments-Sig", "X-NOWPayments-Sig", "X-NOWPAYMENTS-SIG"):
+				value = headers.get(header_name)
+				if isinstance(value, str) and value.strip():
+					signature = value.strip()
+					break
+
+		if not signature:
+			return False
+
+		expected_signatures = {
+			hmac.new(secret.encode("utf-8"), body_bytes, hashlib.sha256).hexdigest(),
+			hmac.new(secret.encode("utf-8"), body_bytes, hashlib.sha512).hexdigest(),
+		}
+		return any(hmac.compare_digest(signature.lower(), expected.lower()) for expected in expected_signatures)
+
+	@staticmethod
+	def handle_webhook(payload: dict[str, Any], *, headers: dict[str, str] | None = None, payment: Payment | None = None, body: bytes | str | None = None) -> Payment:
+		"""Verify a NOWPayments webhook and update the associated payment and order."""
+
+		if not isinstance(payload, dict):
+			raise serializers.ValidationError({"detail": ["Invalid webhook payload."]})
+
+		if not NowPaymentsService._verify_signature(payload, headers, body=body):
+			raise serializers.ValidationError({"detail": ["Webhook signature is invalid."]})
+
+		payment_id = payload.get("payment_id") or payload.get("id") or payload.get("invoice_id")
+		if not payment_id:
+			raise serializers.ValidationError({"detail": ["Webhook payload is missing the payment identifier."]})
+
+		resolved_payment = payment or PaymentService._resolve_payment_for_notification(
+			order_tracking_id=str(payment_id),
+			merchant_reference=str(payload.get("order_id") or payload.get("merchant_reference") or "") or None,
+		)
+		provider_status = NowPaymentsService._normalize_status(payload.get("payment_status") or payload.get("status"))
+
+		resolved_payment.provider_tracking_id = str(payment_id)
+		resolved_payment.status = provider_status
+		resolved_payment.checkout_response = dict(resolved_payment.checkout_response or {})
+		resolved_payment.checkout_response["webhook_payload"] = payload
+		resolved_payment.save(update_fields=["provider_tracking_id", "status", "checkout_response", "updated_at"])
+
+		order = resolved_payment.order
+		order.status = Order.Status.PAID if provider_status == Payment.Status.COMPLETED else Order.Status.PENDING
+		if provider_status == Payment.Status.FAILED:
+			order.status = Order.Status.FAILED
+		elif provider_status == Payment.Status.CANCELLED:
+			order.status = Order.Status.CANCELLED
+		order.save(update_fields=["status", "updated_at"])
+		return resolved_payment
+
+
 class PaymentService:
 	"""Application service for payment initiation and provider orchestration."""
 
@@ -380,6 +620,8 @@ class PaymentService:
 	def _get_provider_adapter(provider: str):
 		if provider == Payment.Provider.PESAPAL:
 			return PesapalService
+		if provider == Payment.Provider.NOWPAYMENTS:
+			return NowPaymentsService
 		raise serializers.ValidationError({"provider": ["Unsupported payment provider."]})
 
 	@staticmethod
@@ -407,6 +649,48 @@ class PaymentService:
 			return Payment.Status.FAILED, Order.Status.FAILED
 
 		return Payment.Status.PENDING, Order.Status.PENDING
+
+	@staticmethod
+	def _normalize_notification_value(value: Any) -> Any:
+		if isinstance(value, (list, tuple)):
+			if not value:
+				return ""
+			return str(value[0])
+		return value
+
+	@staticmethod
+	@transaction.atomic
+	def reconcile_notification(*, payload: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> Payment:
+		"""Reconcile a notification by routing it to the correct provider adapter."""
+
+		payload = {key: PaymentService._normalize_notification_value(value) for key, value in dict(payload or {}).items()}
+		if not payload:
+			raise serializers.ValidationError({"detail": ["Notification payload is empty."]})
+
+		payment_id = payload.get("payment_id") or payload.get("id") or payload.get("invoice_id")
+		order_tracking_id = payload.get("OrderTrackingId") or payload.get("order_tracking_id")
+		merchant_reference = payload.get("OrderMerchantReference") or payload.get("order_merchant_reference")
+
+		if payment_id:
+			try:
+				payment = Payment.objects.select_related("order").filter(provider_reference=str(payment_id)).order_by("-created_at").first()
+				if payment is None:
+					payment = Payment.objects.select_related("order").filter(provider_tracking_id=str(payment_id)).order_by("-created_at").first()
+				if payment is None:
+					raise Payment.DoesNotExist
+			except Payment.DoesNotExist as exc:
+				raise serializers.ValidationError({"detail": ["Payment record not found for provider notification."]}) from exc
+			if payment.provider == Payment.Provider.NOWPAYMENTS:
+				return NowPaymentsService.handle_webhook(payload, headers=headers, payment=payment, body=payload.get("__raw_body__"))
+
+		if order_tracking_id:
+			return PaymentService.reconcile_pesapal_notification(
+				order_tracking_id=str(order_tracking_id),
+				merchant_reference=str(merchant_reference) if merchant_reference else None,
+				notification_type=str(payload.get("OrderNotificationType") or payload.get("order_notification_type") or ""),
+			)
+
+		raise serializers.ValidationError({"detail": ["Unsupported notification payload."]})
 
 	@staticmethod
 	@transaction.atomic
@@ -447,7 +731,8 @@ class PaymentService:
 	def initiate_payment(*, order_reference: str, provider: str) -> Payment:
 		order = PaymentService._get_order(order_reference)
 		PaymentService._validate_order_for_payment(order)
-		resolved_provider = PaymentRoutingService.resolve_provider(order.payment_method or provider)
+		requested_provider = provider or order.payment_method
+		resolved_provider = PaymentRoutingService.resolve_provider(requested_provider)
 
 		try:
 			payment = Payment.objects.create(
@@ -477,7 +762,7 @@ class PaymentService:
 				]
 			)
 
-			order.payment_method = PaymentRoutingService.normalize_payment_method(order.payment_method or provider)
+			order.payment_method = PaymentRoutingService.normalize_payment_method(requested_provider)
 			if payment.provider_tracking_id:
 				order.pesapal_tracking_id = payment.provider_tracking_id
 			order.save(update_fields=["payment_method", "pesapal_tracking_id", "updated_at"])
