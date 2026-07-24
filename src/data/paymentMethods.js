@@ -32,6 +32,6 @@ export const paymentMethodGroups = [
   },
   {
     title: 'Cryptocurrency',
-    methods: [{ label: 'Cryptocurrency', value: 'Cryptocurrency' }],
+    methods: [{ label: 'Cryptocurrency', value: 'Crypto' }],
   },
 ];

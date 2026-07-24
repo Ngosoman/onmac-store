@@ -26,4 +26,4 @@ class PaymentSerializer(serializers.ModelSerializer):
 
 class PaymentInitiationSerializer(serializers.Serializer):
 	order_reference = serializers.UUIDField()
-	provider = serializers.ChoiceField(choices=Payment.Provider.choices, default=Payment.Provider.PESAPAL)
+	provider = serializers.CharField(default=Payment.Provider.PESAPAL)

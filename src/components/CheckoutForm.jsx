@@ -11,10 +11,23 @@ function normalizePaymentMethod(method) {
   return trimmedMethod.toUpperCase();
 }
 
+const NOWPAYMENTS_METHODS = new Set(['Crypto', 'Cryptocurrency', 'NOWPayments']);
+
+function isCryptoPayment(method) {
+  return NOWPAYMENTS_METHODS.has(String(method || '').trim());
+}
+
+function getCurrencyForPayment(paymentMethod, defaultCurrency = 'KES') {
+  const normalized = String(paymentMethod || '').trim();
+  return isCryptoPayment(normalized) ? 'USD' : defaultCurrency;
+}
+
 export default function CheckoutForm({ cartItems }) {
   const [selectedMethod, setSelectedMethod] = useState('Mpesa');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  const isCrypto = isCryptoPayment(selectedMethod);
 
   function parseUnitPrice(rawPrice) {
     const numericValue = Number.parseFloat(String(rawPrice).replace(/[^0-9.]/g, ''));
@@ -51,7 +64,13 @@ export default function CheckoutForm({ cartItems }) {
       throw new Error('Payment link is missing.');
     }
 
-    window.location.assign(createdPayment.redirect_url);
+    if (isCrypto) {
+      // NOWPayments returns an invoice URL — open in a new tab so user returns here
+      window.open(createdPayment.redirect_url, '_blank', 'noopener,noreferrer');
+    } else {
+      // Pesapal flow — redirect to the payment provider
+      window.location.assign(createdPayment.redirect_url);
+    }
   }
 
   async function handleSubmit(event) {
@@ -86,7 +105,7 @@ export default function CheckoutForm({ cartItems }) {
       customer_phone: phone,
       shipping_address: shippingAddress,
       payment_method: normalizePaymentMethod(selectedMethod),
-      currency: 'KES',
+      currency: getCurrencyForPayment(selectedMethod),
       items: cartItems.map((item) => ({
         product_id: item.product?.id,
         product_name: item.product?.name || 'Unnamed Product',
@@ -146,7 +165,9 @@ export default function CheckoutForm({ cartItems }) {
         </div>
         <p className="payment-note">Selected payment method: {selectedMethod}</p>
         <p className="payment-note">
-          Mpesa, Airtel, Mastercard, and Visacards are processed securely on Pesapal after redirect.
+          {isCrypto
+            ? 'Cryptocurrency payments are processed via NOWPayments — you will receive an invoice link in a new tab.'
+            : 'Mpesa, Airtel, Mastercard, and Visacards are processed securely on Pesapal after redirect.'}
         </p>
       </div>
       <div className="form-grid">
@@ -181,7 +202,9 @@ export default function CheckoutForm({ cartItems }) {
       </div>
       {errorMessage ? <p className="payment-note">{errorMessage}</p> : null}
       <button className="submit-button" type="submit" disabled={isSubmitting}>
-        {isSubmitting ? 'Redirecting to Pesapal...' : 'Place order'}
+        {isSubmitting
+          ? (isCrypto ? 'Opening payment page...' : 'Redirecting to Pesapal...')
+          : 'Place order'}
       </button>
     </form>
   );

@@ -31,6 +31,7 @@ class PaymentRoutingService:
 		"VISACARDS": Payment.Provider.PESAPAL,
 		"NOWPAYMENTS": Payment.Provider.NOWPAYMENTS,
 		"CRYPTO": Payment.Provider.NOWPAYMENTS,
+		"CRYPTOCURRENCY": Payment.Provider.NOWPAYMENTS,
 	}
 
 	@staticmethod
