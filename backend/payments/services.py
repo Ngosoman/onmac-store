@@ -15,6 +15,7 @@ from rest_framework import serializers
 from orders.models import Order
 
 from .models import Payment
+from .paypal_service import PayPalService
 
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,8 @@ class PaymentRoutingService:
 		"NOWPAYMENTS": Payment.Provider.NOWPAYMENTS,
 		"CRYPTO": Payment.Provider.NOWPAYMENTS,
 		"CRYPTOCURRENCY": Payment.Provider.NOWPAYMENTS,
+		"PAYPAL": Payment.Provider.PAYPAL,
+		"PAYPAL_CHECKOUT": Payment.Provider.PAYPAL,
 	}
 
 	@staticmethod
@@ -41,7 +44,7 @@ class PaymentRoutingService:
 	@staticmethod
 	def resolve_provider(payment_method: str | None) -> str:
 		normalized_payment_method = PaymentRoutingService.normalize_payment_method(payment_method)
-		if normalized_payment_method in {Payment.Provider.PESAPAL, Payment.Provider.NOWPAYMENTS}:
+		if normalized_payment_method in {Payment.Provider.PESAPAL, Payment.Provider.NOWPAYMENTS, Payment.Provider.PAYPAL}:
 			return normalized_payment_method
 		provider = PaymentRoutingService.PAYMENT_METHOD_TO_PROVIDER.get(normalized_payment_method)
 		if provider:
@@ -623,6 +626,8 @@ class PaymentService:
 			return PesapalService
 		if provider == Payment.Provider.NOWPAYMENTS:
 			return NowPaymentsService
+		if provider == Payment.Provider.PAYPAL:
+			return PayPalService
 		raise serializers.ValidationError({"provider": ["Unsupported payment provider."]})
 
 	@staticmethod

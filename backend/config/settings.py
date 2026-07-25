@@ -153,4 +153,13 @@ NOWPAYMENTS_API_KEY = env("NOWPAYMENTS_API_KEY", default="")
 NOWPAYMENTS_BASE_URL = env("NOWPAYMENTS_BASE_URL", default="https://api.nowpayments.io/v1")
 NOWPAYMENTS_IPN_SECRET = env("NOWPAYMENTS_IPN_SECRET", default="")
 NOWPAYMENTS_IPN_URL = env("NOWPAYMENTS_IPN_URL", default="")
+
+# PayPal configuration
+PAYPAL_CLIENT_ID = env("PAYPAL_CLIENT_ID", default="")
+PAYPAL_CLIENT_SECRET = env("PAYPAL_CLIENT_SECRET", default="")
+PAYPAL_MODE = env("PAYPAL_MODE", default="sandbox")
+PAYPAL_WEBHOOK_ID = env("PAYPAL_WEBHOOK_ID", default="")
+PAYPAL_RETURN_URL = env("PAYPAL_RETURN_URL", default="http://localhost:8000/api/payments/paypal/capture/")
+PAYPAL_CANCEL_URL = env("PAYPAL_CANCEL_URL", default="http://localhost:5173/checkout")
+
 FRONTEND_PAYMENT_RESULT_URL = env("FRONTEND_PAYMENT_RESULT_URL", default="http://localhost:5173/payment-result")

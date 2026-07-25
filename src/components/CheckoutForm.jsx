@@ -12,14 +12,21 @@ function normalizePaymentMethod(method) {
 }
 
 const NOWPAYMENTS_METHODS = new Set(['Crypto', 'Cryptocurrency', 'NOWPayments']);
+const PAYPAL_METHODS = new Set(['Paypal']);
 
 function isCryptoPayment(method) {
   return NOWPAYMENTS_METHODS.has(String(method || '').trim());
 }
 
+function isPayPalPayment(method) {
+  return PAYPAL_METHODS.has(String(method || '').trim());
+}
+
 function getCurrencyForPayment(paymentMethod, defaultCurrency = 'KES') {
   const normalized = String(paymentMethod || '').trim();
-  return isCryptoPayment(normalized) ? 'USD' : defaultCurrency;
+  if (isCryptoPayment(normalized)) return 'USD';
+  if (isPayPalPayment(normalized)) return 'USD';
+  return defaultCurrency;
 }
 
 export default function CheckoutForm({ cartItems }) {
@@ -28,10 +35,27 @@ export default function CheckoutForm({ cartItems }) {
   const [errorMessage, setErrorMessage] = useState('');
 
   const isCrypto = isCryptoPayment(selectedMethod);
+  const isPayPal = isPayPalPayment(selectedMethod);
 
   function parseUnitPrice(rawPrice) {
     const numericValue = Number.parseFloat(String(rawPrice).replace(/[^0-9.]/g, ''));
     return Number.isFinite(numericValue) ? numericValue.toFixed(2) : '0.00';
+  }
+
+  function getRedirectLabel() {
+    if (isCrypto) return 'Opening payment page...';
+    if (isPayPal) return 'Redirecting to PayPal...';
+    return 'Redirecting to Pesapal...';
+  }
+
+  function getPaymentDescription() {
+    if (isCrypto) {
+      return 'Cryptocurrency payments are processed via NOWPayments — you will receive an invoice link in a new tab.';
+    }
+    if (isPayPal) {
+      return 'PayPal payments are processed securely on PayPal — you will be redirected to complete payment.';
+    }
+    return 'Mpesa, Airtel, Mastercard, and Visacards are processed securely on Pesapal after redirect.';
   }
 
   async function submitOrderAndRedirect(orderPayload) {
@@ -65,10 +89,13 @@ export default function CheckoutForm({ cartItems }) {
     }
 
     if (isCrypto) {
-      // NOWPayments returns an invoice URL — open in a new tab so user returns here
+      // NOWPayments — open invoice in new tab
       window.open(createdPayment.redirect_url, '_blank', 'noopener,noreferrer');
     } else {
-      // Pesapal flow — redirect to the payment provider
+      // PayPal or Pesapal — redirect to payment provider
+      // For PayPal: customer approves on PayPal, then PayPal redirects to
+      // PAYPAL_RETURN_URL which captures server-side and redirects to
+      // FRONTEND_PAYMENT_RESULT_URL with status params.
       window.location.assign(createdPayment.redirect_url);
     }
   }
@@ -164,11 +191,7 @@ export default function CheckoutForm({ cartItems }) {
           ))}
         </div>
         <p className="payment-note">Selected payment method: {selectedMethod}</p>
-        <p className="payment-note">
-          {isCrypto
-            ? 'Cryptocurrency payments are processed via NOWPayments — you will receive an invoice link in a new tab.'
-            : 'Mpesa, Airtel, Mastercard, and Visacards are processed securely on Pesapal after redirect.'}
-        </p>
+        <p className="payment-note">{getPaymentDescription()}</p>
       </div>
       <div className="form-grid">
         <label>
@@ -202,10 +225,9 @@ export default function CheckoutForm({ cartItems }) {
       </div>
       {errorMessage ? <p className="payment-note">{errorMessage}</p> : null}
       <button className="submit-button" type="submit" disabled={isSubmitting}>
-        {isSubmitting
-          ? (isCrypto ? 'Opening payment page...' : 'Redirecting to Pesapal...')
-          : 'Place order'}
+        {isSubmitting ? getRedirectLabel() : 'Place order'}
       </button>
     </form>
   );
 }
+

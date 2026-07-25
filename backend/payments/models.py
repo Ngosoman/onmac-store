@@ -9,6 +9,7 @@ class Payment(models.Model):
 	class Provider(models.TextChoices):
 		PESAPAL = "PESAPAL", "Pesapal"
 		NOWPAYMENTS = "NOWPAYMENTS", "NOWPayments"
+		PAYPAL = "PAYPAL", "PayPal"
 
 	class Status(models.TextChoices):
 		INITIALIZED = "initialized", "Initialized"
