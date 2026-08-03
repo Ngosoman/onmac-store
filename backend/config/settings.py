@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+import os
 import sys
 
 import environ
@@ -30,6 +31,14 @@ env = environ.Env()
 environ.Env.read_env(BASE_DIR / ".env")
 
 
+def _split_csv_env(var_name: str, default: list[str]) -> list[str]:
+    """Parse comma-separated env vars robustly and strip whitespace/empty items."""
+    raw_value = os.getenv(var_name)
+    if raw_value is None or not str(raw_value).strip():
+        return default
+    return [item.strip().strip('"').strip("'") for item in str(raw_value).split(",") if item.strip()]
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
@@ -39,14 +48,26 @@ SECRET_KEY = env("SECRET_KEY", default="django-insecure-887!g)ly!k4hs6xpzyhu4n#+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.bool("DEBUG", default=False)
 
-ALLOWED_HOSTS = env.list(
-    "ALLOWED_HOSTS",
-    default=["localhost", "127.0.0.1", "testserver", "theonmac.com", "www.theonmac.com", "api.theonmac.com"],
-)
-CSRF_TRUSTED_ORIGINS = env.list(
-    "CSRF_TRUSTED_ORIGINS",
-    default=["https://theonmac.com", "https://www.theonmac.com", "https://api.theonmac.com"],
-)
+DEFAULT_ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "testserver",
+    "onmac-store.onrender.com",
+    "theonmac.com",
+    "www.theonmac.com",
+    "api.theonmac.com",
+    "onmac-store.vercel.app",
+]
+DEFAULT_CSRF_TRUSTED_ORIGINS = [
+    "https://onmac-store.onrender.com",
+    "https://theonmac.com",
+    "https://www.theonmac.com",
+    "https://api.theonmac.com",
+    "https://onmac-store.vercel.app",
+]
+
+ALLOWED_HOSTS = _split_csv_env("ALLOWED_HOSTS", DEFAULT_ALLOWED_HOSTS)
+CSRF_TRUSTED_ORIGINS = _split_csv_env("CSRF_TRUSTED_ORIGINS", DEFAULT_CSRF_TRUSTED_ORIGINS)
 
 
 # Application definition
@@ -139,9 +160,14 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+}
+
+APPEND_SLASH = True
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
