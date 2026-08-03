@@ -216,6 +216,9 @@ class PesapalService:
 
 		token = response_data.get("token")
 		if not token:
+			error_data = response_data.get("error") if isinstance(response_data, dict) else None
+			if isinstance(error_data, dict) and error_data.get("code") == "invalid_consumer_key_or_secret_provided":
+				raise serializers.ValidationError({"detail": ["Pesapal consumer key or secret was rejected."]})
 			logger.error("Pesapal authentication response missing token")
 			raise serializers.ValidationError({"detail": ["Failed to authenticate payment provider."]})
 

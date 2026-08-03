@@ -46,6 +46,17 @@ class StripeService:
 		return str(currency or "USD").strip().lower()
 
 	@staticmethod
+	def _coerce_mapping(value: Any) -> dict[str, Any]:
+		if isinstance(value, dict):
+			return dict(value)
+		to_dict_recursive = getattr(value, "to_dict_recursive", None)
+		if callable(to_dict_recursive):
+			converted = to_dict_recursive()
+			if isinstance(converted, dict):
+				return converted
+		return {}
+
+	@staticmethod
 	def _build_line_items(order: Order) -> list[dict[str, Any]]:
 		if order.items.exists():
 			items: list[dict[str, Any]] = []
@@ -130,7 +141,7 @@ class StripeService:
 				"url": session.url,
 				"payment_status": getattr(session, "payment_status", None),
 				"status": getattr(session, "status", None),
-				"metadata": dict(getattr(session, "metadata", {}) or {}),
+				"metadata": StripeService._coerce_mapping(getattr(session, "metadata", {}) or {}),
 			},
 		}
 
@@ -147,7 +158,7 @@ class StripeService:
 			"id": session.id,
 			"status": getattr(session, "status", None),
 			"payment_status": getattr(session, "payment_status", None),
-			"metadata": dict(getattr(session, "metadata", {}) or {}),
+			"metadata": StripeService._coerce_mapping(getattr(session, "metadata", {}) or {}),
 			"url": getattr(session, "url", None),
 		}
 
