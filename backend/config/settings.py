@@ -91,6 +91,18 @@ CSRF_TRUSTED_ORIGINS = _merge_with_defaults(
     DEFAULT_CSRF_TRUSTED_ORIGINS,
 )
 
+DEFAULT_CORS_ALLOWED_ORIGINS = [
+    "https://theonmac.com",
+    "https://www.theonmac.com",
+    "https://onmac-store.vercel.app",
+    "http://localhost:5173",
+]
+CORS_ALLOWED_ORIGINS = _merge_with_defaults(
+    _split_csv_env("CORS_ALLOWED_ORIGINS", DEFAULT_CORS_ALLOWED_ORIGINS),
+    DEFAULT_CORS_ALLOWED_ORIGINS,
+)
+CORS_ALLOW_CREDENTIALS = env.bool("CORS_ALLOW_CREDENTIALS", default=False)
+
 
 # Application definition
 
@@ -101,6 +113,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'rest_framework',
     'users',
     'products',
@@ -112,6 +125,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',

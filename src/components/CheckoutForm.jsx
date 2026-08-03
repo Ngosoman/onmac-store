@@ -1,6 +1,15 @@
 import { useState } from 'react';
 import { paymentMethodGroups } from '../data/paymentMethods';
 
+const API_BASE_URL = String(import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/$/, '');
+
+function apiUrl(path) {
+  if (!API_BASE_URL) {
+    return path;
+  }
+  return `${API_BASE_URL}${path}`;
+}
+
 function normalizePaymentMethod(method) {
   const trimmedMethod = String(method || '').trim();
 
@@ -70,7 +79,7 @@ export default function CheckoutForm({ cartItems }) {
   }
 
   async function submitOrderAndRedirect(orderPayload) {
-    const orderResponse = await fetch('/api/orders/', {
+    const orderResponse = await fetch(apiUrl('/api/orders/'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(orderPayload),
@@ -81,7 +90,7 @@ export default function CheckoutForm({ cartItems }) {
       throw new Error(createdOrder?.detail?.[0] || 'Failed to create order.');
     }
 
-    const paymentResponse = await fetch('/api/payments/', {
+    const paymentResponse = await fetch(apiUrl('/api/payments/'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
