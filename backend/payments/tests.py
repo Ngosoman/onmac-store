@@ -82,6 +82,27 @@ class PaymentServiceTests(TestCase):
 		self.assertEqual(payment.status, Payment.Status.PENDING)
 		self.assertEqual(payment.provider_reference, "invoice-001")
 
+	def test_initiate_payment_uses_stripe_adapter(self):
+		with patch("payments.services.StripeService.create_payment") as mock_create_payment:
+			mock_create_payment.return_value = {
+				"provider": Payment.Provider.STRIPE,
+				"merchant_reference": self.order.merchant_reference,
+				"redirect_url": "https://checkout.stripe.com/c/pay/test_session",
+				"provider_reference": "cs_test_123",
+				"provider_tracking_id": "cs_test_123",
+				"status": Payment.Status.PENDING,
+				"request_payload": {"mode": "payment"},
+				"response_payload": {"id": "cs_test_123", "status": "open"},
+			}
+			payment = PaymentService.initiate_payment(
+				order_reference=str(self.order.reference),
+				provider=Payment.Provider.STRIPE,
+			)
+
+		self.assertEqual(payment.provider, Payment.Provider.STRIPE)
+		self.assertEqual(payment.status, Payment.Status.PENDING)
+		self.assertEqual(payment.provider_reference, "cs_test_123")
+
 
 class PaymentApiTests(TestCase):
 	def setUp(self):
@@ -237,3 +258,27 @@ class PaymentApiTests(TestCase):
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(payment.status, Payment.Status.COMPLETED)
 		self.assertEqual(self.order.status, Order.Status.PAID)
+
+	def test_stripe_webhook_marks_payment_completed_and_order_paid(self):
+		payment = Payment.objects.create(
+			order=self.order,
+			provider=Payment.Provider.STRIPE,
+			status=Payment.Status.PENDING,
+			amount=self.order.total_amount,
+			currency=self.order.currency,
+			provider_reference="cs_test_123",
+			provider_tracking_id="cs_test_123",
+		)
+
+		mock_event = type("Event", (), {"id": "evt_test_123", "type": "checkout.session.completed", "data": type("Data", (), {"object": {"id": "cs_test_123", "payment_status": "paid", "metadata": {"payment_reference": str(payment.reference), "order_reference": str(self.order.reference), "provider": Payment.Provider.STRIPE}}})()})()
+
+		with patch("payments.views.StripeService.handle_webhook") as mock_handle_webhook:
+			mock_handle_webhook.return_value = payment
+			response = self.client.post(
+				"/api/payments/stripe/webhook/",
+				data={},
+				format="json",
+			)
+
+		self.assertEqual(response.status_code, 200)
+		mock_handle_webhook.assert_called_once()

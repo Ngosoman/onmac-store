@@ -13,10 +13,13 @@ from rest_framework.views import APIView
 from rest_framework.exceptions import APIException
 from rest_framework.response import Response
 
+from orders.models import Order
+
 from .models import Payment
 from .serializers import PaymentInitiationSerializer, PaymentSerializer
 from .services import PaymentService
 from .paypal_service import PayPalService
+from .stripe_service import StripeService
 
 
 logger = logging.getLogger(__name__)
@@ -133,6 +136,59 @@ class PaymentIPNAPIView(_PesapalNotificationMixin, APIView):
 		return self._reconcile(request.data)
 
 
+class StripeSuccessAPIView(APIView):
+	def get(self, request, *args, **kwargs):
+		session_id = request.query_params.get("session_id") or request.query_params.get("session")
+		if not session_id:
+			return Response({"detail": ["Missing Stripe session identifier."]}, status=status.HTTP_400_BAD_REQUEST)
+
+		try:
+			verification = StripeService.verify_payment(session_id)
+		except serializers.ValidationError as exc:
+			return Response(exc.detail, status=status.HTTP_400_BAD_REQUEST)
+
+		payment = None
+		metadata = verification.get("metadata") or {}
+		payment_reference = metadata.get("payment_reference") if isinstance(metadata, dict) else None
+		order_reference = metadata.get("order_reference") if isinstance(metadata, dict) else None
+		if payment_reference:
+			try:
+				payment = Payment.objects.select_related("order").get(reference=payment_reference)
+			except Payment.DoesNotExist:
+				payment = None
+		if payment is None and order_reference:
+			payment = Payment.objects.select_related("order").filter(order__reference=order_reference).order_by("-created_at").first()
+		if payment is None:
+			payment = Payment.objects.select_related("order").filter(provider_tracking_id=session_id).order_by("-created_at").first()
+		if payment is None:
+			return Response({"detail": ["Payment record not found for Stripe success callback."]}, status=status.HTTP_404_NOT_FOUND)
+
+		if str(verification.get("payment_status") or "").lower() in {"paid", "succeeded", "complete"}:
+			payment.status = Payment.Status.COMPLETED
+			payment.save(update_fields=["status", "updated_at"])
+			payment.order.status = Order.Status.PAID
+			payment.order.save(update_fields=["status", "updated_at"])
+
+		result_url = str(getattr(settings, "FRONTEND_PAYMENT_RESULT_URL", "")).strip()
+		if result_url:
+			query = urlencode({
+				"payment_reference": str(payment.reference),
+				"payment_status": payment.status,
+				"order_reference": str(payment.order.reference),
+				"order_status": payment.order.status,
+			})
+			separator = "&" if "?" in result_url else "?"
+			return redirect(f"{result_url}{separator}{query}")
+
+		return Response({
+			"message": "Stripe payment verified.",
+			"payment_reference": str(payment.reference),
+			"payment_status": payment.status,
+			"order_reference": str(payment.order.reference),
+			"order_status": payment.order.status,
+		}, status=status.HTTP_200_OK)
+
+
 class PayPalCaptureAPIView(APIView):
 	"""
 	Capture a PayPal order after the customer has approved it.
@@ -210,6 +266,26 @@ class PayPalCaptureAPIView(APIView):
 			},
 			status=status.HTTP_200_OK,
 		)
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class StripeWebhookAPIView(APIView):
+	authentication_classes = []
+	permission_classes = []
+
+	def post(self, request, *args, **kwargs):
+		body = request.body
+		try:
+			payment = StripeService.handle_webhook(body, headers=dict(request.headers))
+		except serializers.ValidationError as exc:
+			logger.warning("Stripe webhook rejected: %s", exc.detail)
+			return Response(exc.detail, status=status.HTTP_400_BAD_REQUEST)
+
+		if payment:
+			logger.info("Stripe webhook processed for payment %s", payment.reference)
+		else:
+			logger.info("Stripe webhook ignored")
+		return Response({"status": "received"}, status=status.HTTP_200_OK)
 
 
 @method_decorator(csrf_exempt, name="dispatch")

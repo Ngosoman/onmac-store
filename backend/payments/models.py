@@ -10,6 +10,7 @@ class Payment(models.Model):
 		PESAPAL = "PESAPAL", "Pesapal"
 		NOWPAYMENTS = "NOWPAYMENTS", "NOWPayments"
 		PAYPAL = "PAYPAL", "PayPal"
+		STRIPE = "STRIPE", "Stripe"
 
 	class Status(models.TextChoices):
 		INITIALIZED = "initialized", "Initialized"

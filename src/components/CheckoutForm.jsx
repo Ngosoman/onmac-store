@@ -13,6 +13,7 @@ function normalizePaymentMethod(method) {
 
 const NOWPAYMENTS_METHODS = new Set(['Crypto', 'Cryptocurrency', 'NOWPayments']);
 const PAYPAL_METHODS = new Set(['Paypal']);
+const STRIPE_METHODS = new Set(['Stripe', 'Card', 'Credit Card', 'Debit Card', 'CREDIT_CARD', 'DEBIT_CARD', 'CARD']);
 
 function isCryptoPayment(method) {
   return NOWPAYMENTS_METHODS.has(String(method || '').trim());
@@ -20,6 +21,11 @@ function isCryptoPayment(method) {
 
 function isPayPalPayment(method) {
   return PAYPAL_METHODS.has(String(method || '').trim());
+}
+
+function isStripePayment(method) {
+  const normalized = String(method || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '');
+  return STRIPE_METHODS.has(String(method || '').trim()) || normalized === 'STRIPE' || normalized === 'CARD' || normalized === 'CREDITCARD' || normalized === 'DEBITCARD';
 }
 
 function getCurrencyForPayment(paymentMethod, defaultCurrency = 'KES') {
@@ -36,6 +42,7 @@ export default function CheckoutForm({ cartItems }) {
 
   const isCrypto = isCryptoPayment(selectedMethod);
   const isPayPal = isPayPalPayment(selectedMethod);
+  const isStripe = isStripePayment(selectedMethod);
 
   function parseUnitPrice(rawPrice) {
     const numericValue = Number.parseFloat(String(rawPrice).replace(/[^0-9.]/g, ''));
@@ -45,6 +52,7 @@ export default function CheckoutForm({ cartItems }) {
   function getRedirectLabel() {
     if (isCrypto) return 'Opening payment page...';
     if (isPayPal) return 'Redirecting to PayPal...';
+    if (isStripe) return 'Redirecting to Stripe...';
     return 'Redirecting to Pesapal...';
   }
 
@@ -54,6 +62,9 @@ export default function CheckoutForm({ cartItems }) {
     }
     if (isPayPal) {
       return 'PayPal payments are processed securely on PayPal — you will be redirected to complete payment.';
+    }
+    if (isStripe) {
+      return 'Card payments are processed securely on Stripe via hosted checkout.';
     }
     return 'Mpesa, Airtel, Mastercard, and Visacards are processed securely on Pesapal after redirect.';
   }
@@ -92,10 +103,11 @@ export default function CheckoutForm({ cartItems }) {
       // NOWPayments — open invoice in new tab
       window.open(createdPayment.redirect_url, '_blank', 'noopener,noreferrer');
     } else {
-      // PayPal or Pesapal — redirect to payment provider
+      // PayPal, Stripe, or Pesapal — redirect to payment provider
       // For PayPal: customer approves on PayPal, then PayPal redirects to
       // PAYPAL_RETURN_URL which captures server-side and redirects to
       // FRONTEND_PAYMENT_RESULT_URL with status params.
+      // For Stripe: the hosted checkout session redirects to the success URL.
       window.location.assign(createdPayment.redirect_url);
     }
   }

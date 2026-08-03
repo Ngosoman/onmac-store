@@ -31,6 +31,15 @@ export const paymentMethodGroups = [
     ],
   },
   {
+    title: 'Cards',
+    methods: [
+      { label: 'Stripe', value: 'Stripe' },
+      { label: 'Card', value: 'Card' },
+      { label: 'Credit Card', value: 'Credit Card' },
+      { label: 'Debit Card', value: 'Debit Card' },
+    ],
+  },
+  {
     title: 'Cryptocurrency',
     methods: [{ label: 'Cryptocurrency', value: 'Crypto' }],
   },

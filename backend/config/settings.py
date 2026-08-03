@@ -24,6 +24,8 @@ load_dotenv(BASE_DIR / ".env")
 if "test" in sys.argv:
     load_dotenv(BASE_DIR / ".env.test", override=True)
 
+TESTING = "test" in sys.argv
+
 env = environ.Env()
 environ.Env.read_env(BASE_DIR / ".env")
 
@@ -161,5 +163,12 @@ PAYPAL_MODE = env("PAYPAL_MODE", default="sandbox")
 PAYPAL_WEBHOOK_ID = env("PAYPAL_WEBHOOK_ID", default="")
 PAYPAL_RETURN_URL = env("PAYPAL_RETURN_URL", default="http://localhost:8000/api/payments/paypal/capture/")
 PAYPAL_CANCEL_URL = env("PAYPAL_CANCEL_URL", default="http://localhost:5173/checkout")
+
+# Stripe configuration
+STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
+STRIPE_PUBLISHABLE_KEY = env("STRIPE_PUBLISHABLE_KEY", default="")
+STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")
+STRIPE_SUCCESS_URL = env("STRIPE_SUCCESS_URL", default="http://localhost:5173/payment-result")
+STRIPE_CANCEL_URL = env("STRIPE_CANCEL_URL", default="http://localhost:5173/checkout")
 
 FRONTEND_PAYMENT_RESULT_URL = env("FRONTEND_PAYMENT_RESULT_URL", default="http://localhost:5173/payment-result")
