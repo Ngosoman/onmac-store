@@ -1,7 +1,22 @@
 import { useState } from 'react';
 import { paymentMethodGroups } from '../data/paymentMethods';
 
-const API_BASE_URL = String(import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/$/, '');
+const DEFAULT_PRODUCTION_API_BASE_URL = 'https://onmac-store.onrender.com';
+
+function resolveApiBaseUrl() {
+  const configured = String(import.meta.env.VITE_API_BASE_URL || '').trim();
+  if (configured) {
+    return configured.replace(/\/$/, '');
+  }
+
+  if (import.meta.env.PROD) {
+    return DEFAULT_PRODUCTION_API_BASE_URL;
+  }
+
+  return '';
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 function apiUrl(path) {
   if (!API_BASE_URL) {
