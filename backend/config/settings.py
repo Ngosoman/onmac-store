@@ -39,6 +39,22 @@ def _split_csv_env(var_name: str, default: list[str]) -> list[str]:
     return [item.strip().strip('"').strip("'") for item in str(raw_value).split(",") if item.strip()]
 
 
+def _merge_with_defaults(values: list[str], defaults: list[str]) -> list[str]:
+    """Keep required defaults while allowing env-supplied additions."""
+    merged: list[str] = []
+    seen: set[str] = set()
+    for item in [*defaults, *values]:
+        normalized = str(item).strip()
+        if not normalized:
+            continue
+        key = normalized.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(normalized)
+    return merged
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
@@ -66,8 +82,14 @@ DEFAULT_CSRF_TRUSTED_ORIGINS = [
     "https://onmac-store.vercel.app",
 ]
 
-ALLOWED_HOSTS = _split_csv_env("ALLOWED_HOSTS", DEFAULT_ALLOWED_HOSTS)
-CSRF_TRUSTED_ORIGINS = _split_csv_env("CSRF_TRUSTED_ORIGINS", DEFAULT_CSRF_TRUSTED_ORIGINS)
+ALLOWED_HOSTS = _merge_with_defaults(
+    _split_csv_env("ALLOWED_HOSTS", DEFAULT_ALLOWED_HOSTS),
+    DEFAULT_ALLOWED_HOSTS,
+)
+CSRF_TRUSTED_ORIGINS = _merge_with_defaults(
+    _split_csv_env("CSRF_TRUSTED_ORIGINS", DEFAULT_CSRF_TRUSTED_ORIGINS),
+    DEFAULT_CSRF_TRUSTED_ORIGINS,
+)
 
 
 # Application definition
