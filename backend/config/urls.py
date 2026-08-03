@@ -15,13 +15,39 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
+from django.http import JsonResponse
 from django.urls import include, path
 
+
+def home(request):
+    return JsonResponse({
+        "service": "Onmac Store API",
+        "status": "online",
+        "version": "1.0"
+    })
+
+
+def api_root(request):
+    return JsonResponse({
+        "message": "Welcome to Onmac Store API",
+        "endpoints": {
+            "users": "/api/users/",
+            "products": "/api/products/",
+            "cart": "/api/cart/",
+            "orders": "/api/orders/",
+            "payments": "/api/payments/",
+        }
+    })
+
+
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('api/users/', include('users.urls')),
-    path('api/products/', include('products.urls')),
-    path('api/cart/', include('cart.urls')),
-    path('api/orders/', include('orders.urls')),
-    path('api/payments/', include('payments.urls')),
+    path("", home),
+    path("api/", api_root),
+
+    path("admin/", admin.site.urls),
+    path("api/users/", include("users.urls")),
+    path("api/products/", include("products.urls")),
+    path("api/cart/", include("cart.urls")),
+    path("api/orders/", include("orders.urls")),
+    path("api/payments/", include("payments.urls")),
 ]
