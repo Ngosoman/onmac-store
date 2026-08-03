@@ -10,6 +10,18 @@ function apiUrl(path) {
   return `${API_BASE_URL}${path}`;
 }
 
+async function parseApiResponse(response) {
+  const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+  if (contentType.includes('application/json')) {
+    return response.json();
+  }
+
+  const text = await response.text();
+  return {
+    detail: [text || `Request failed with status ${response.status}.`],
+  };
+}
+
 function normalizePaymentMethod(method) {
   const trimmedMethod = String(method || '').trim();
 
@@ -85,7 +97,7 @@ export default function CheckoutForm({ cartItems }) {
       body: JSON.stringify(orderPayload),
     });
 
-    const createdOrder = await orderResponse.json();
+    const createdOrder = await parseApiResponse(orderResponse);
     if (!orderResponse.ok) {
       throw new Error(createdOrder?.detail?.[0] || 'Failed to create order.');
     }
@@ -99,7 +111,7 @@ export default function CheckoutForm({ cartItems }) {
       }),
     });
 
-    const createdPayment = await paymentResponse.json();
+    const createdPayment = await parseApiResponse(paymentResponse);
     if (!paymentResponse.ok) {
       throw new Error(createdPayment?.detail?.[0] || 'Failed to initialize payment.');
     }
