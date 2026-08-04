@@ -6,20 +6,20 @@ export default function PaymentResult() {
   const paymentReference = params.get('payment_reference') || 'N/A';
   const orderTrackingId = params.get('order_tracking_id') || 'N/A';
 
-  const isSuccess = paymentStatus === 'completed' || orderStatus === 'paid';
+  const isSuccess = paymentStatus === 'completed' || paymentStatus === 'succeeded' || paymentStatus === 'paid' || orderStatus === 'paid' || orderStatus === 'completed';
   const isFailed = paymentStatus === 'failed' || orderStatus === 'failed' || paymentStatus === 'cancelled' || orderStatus === 'cancelled';
 
   const title = isSuccess
-    ? 'Payment Successful'
+    ? 'Order received'
     : isFailed
-      ? 'Payment Not Completed'
-      : 'Payment Is Processing';
+      ? 'Payment not completed'
+      : 'Payment is being confirmed';
 
   const message = isSuccess
-    ? 'Your payment was received and your order is confirmed.'
+    ? 'Your payment was received and your order has been confirmed. We will send you a confirmation shortly.'
     : isFailed
-      ? 'Your payment did not complete. You can return and try checkout again.'
-      : 'We received your callback and are still confirming final provider status.';
+      ? 'Your payment did not complete. You can return to checkout and try again.'
+      : 'We received your callback and are still confirming the final provider status.';
 
   return (
     <div className="app-shell">

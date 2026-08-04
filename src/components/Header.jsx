@@ -9,7 +9,7 @@ export default function Header({ cartCount }) {
         <a href="#products">Products</a>
         <a href="#cart">Cart</a>
         <a href="#checkout">Checkout</a>
-        <a className="cart-pill" href="#cart" aria-label={`${cartCount} items in cart`}>
+        <a className={`cart-pill${cartCount > 0 ? ' cart-pill--active' : ''}`} href="#cart" aria-label={`${cartCount} items in cart`}>
           Cart {cartCount}
         </a>
       </nav>

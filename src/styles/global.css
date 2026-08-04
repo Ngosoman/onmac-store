@@ -96,6 +96,31 @@ a {
   border: 1px solid rgba(215, 176, 112, 0.3);
   color: #f3d6a4;
   font-size: 0.9rem;
+  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.cart-pill--active {
+  background: rgba(243, 214, 164, 0.2);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+  transform: translateY(-1px);
+}
+
+.cart-toast {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border: 1px solid rgba(215, 176, 112, 0.32);
+  border-radius: 18px;
+  background: linear-gradient(90deg, rgba(215, 176, 112, 0.2), rgba(215, 176, 112, 0.08));
+  box-shadow: 0 16px 35px rgba(0, 0, 0, 0.18);
+}
+
+.cart-toast .ghost-button {
+  margin-top: 0;
+  padding: 8px 12px;
 }
 
 .cart-section {
@@ -275,6 +300,13 @@ a {
   color: #1a1209;
   font-weight: 700;
   cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.product-footer button:hover,
+.submit-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.2);
 }
 
 .checkout-section {

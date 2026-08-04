@@ -64,11 +64,8 @@ function isStripePayment(method) {
   return STRIPE_METHODS.has(String(method || '').trim()) || normalized === 'STRIPE' || normalized === 'CARD' || normalized === 'CREDITCARD' || normalized === 'DEBITCARD';
 }
 
-function getCurrencyForPayment(paymentMethod, defaultCurrency = 'KES') {
-  const normalized = String(paymentMethod || '').trim();
-  if (isCryptoPayment(normalized)) return 'USD';
-  if (isPayPalPayment(normalized)) return 'USD';
-  return defaultCurrency;
+function getCurrencyForPayment() {
+  return 'USD';
 }
 
 export default function CheckoutForm({ cartItems }) {
@@ -103,6 +100,10 @@ export default function CheckoutForm({ cartItems }) {
       return 'Card payments are processed securely on Stripe via hosted checkout.';
     }
     return 'Mpesa, Airtel, Mastercard, and Visacards are processed securely on Pesapal after redirect.';
+  }
+
+  function getCurrencyLabel() {
+    return 'USD';
   }
 
   async function submitOrderAndRedirect(orderPayload) {
@@ -180,7 +181,7 @@ export default function CheckoutForm({ cartItems }) {
       customer_phone: phone,
       shipping_address: shippingAddress,
       payment_method: normalizePaymentMethod(selectedMethod),
-      currency: getCurrencyForPayment(selectedMethod),
+      currency: getCurrencyForPayment(),
       items: cartItems.map((item) => ({
         product_id: item.product?.id,
         product_name: item.product?.name || 'Unnamed Product',
@@ -240,6 +241,7 @@ export default function CheckoutForm({ cartItems }) {
         </div>
         <p className="payment-note">Selected payment method: {selectedMethod}</p>
         <p className="payment-note">{getPaymentDescription()}</p>
+        <p className="payment-note">All prices for this store are charged in {getCurrencyLabel()}.</p>
       </div>
       <div className="form-grid">
         <label>

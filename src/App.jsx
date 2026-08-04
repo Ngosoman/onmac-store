@@ -9,11 +9,12 @@ import PaymentResult from './components/PaymentResult';
 import { products } from './data/products';
 
 export default function App() {
+  const [cart, setCart] = useState([]);
+  const [cartFeedback, setCartFeedback] = useState(null);
+
   if (window.location.pathname.startsWith('/payment-result')) {
     return <PaymentResult />;
   }
-
-  const [cart, setCart] = useState([]);
 
   const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
 
@@ -34,13 +35,21 @@ export default function App() {
     setCart((currentCart) => {
       const existingItem = currentCart.find((item) => item.id === product.id);
 
-      if (existingItem) {
-        return currentCart.map((item) =>
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item,
-        );
-      }
+      const nextCart = existingItem
+        ? currentCart.map((item) =>
+            item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item,
+          )
+        : [...currentCart, { id: product.id, quantity: 1 }];
 
-      return [...currentCart, { id: product.id, quantity: 1 }];
+      const nextCount = nextCart.reduce((total, item) => total + item.quantity, 0);
+      setCartFeedback({ productName: product.name, count: nextCount });
+
+      window.clearTimeout(window.__cartFeedbackTimeout);
+      window.__cartFeedbackTimeout = window.setTimeout(() => {
+        setCartFeedback(null);
+      }, 2400);
+
+      return nextCart;
     });
   }
 
@@ -68,6 +77,18 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      {cartFeedback ? (
+        <div className="cart-toast" role="status" aria-live="polite">
+          <span>Added {cartFeedback.productName} to your cart.</span>
+          <button
+            type="button"
+            className="ghost-button"
+            onClick={() => document.getElementById('cart')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          >
+            View cart
+          </button>
+        </div>
+      ) : null}
       <Header cartCount={cartCount} />
       <main>
         <Hero />
