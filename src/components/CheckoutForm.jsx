@@ -6,7 +6,8 @@ const DEFAULT_PRODUCTION_API_BASE_URL = 'https://onmac-store.onrender.com';
 function resolveApiBaseUrl() {
   const configured = String(import.meta.env.VITE_API_BASE_URL || '').trim();
   if (configured) {
-    return configured.replace(/\/$/, '');
+    const normalized = configured.replace(/\/$/, '');
+    return normalized;
   }
 
   if (import.meta.env.PROD) {
