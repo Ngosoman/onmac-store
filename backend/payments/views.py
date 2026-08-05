@@ -39,6 +39,8 @@ class PaymentInitiationAPIView(generics.GenericAPIView):
 		serializer.is_valid(raise_exception=True)
 		try:
 			payment = PaymentService.initiate_payment(**serializer.validated_data)
+		except serializers.ValidationError as exc:
+			return Response(exc.detail, status=status.HTTP_400_BAD_REQUEST)
 		except DatabaseError as exc:
 			raise PaymentError() from exc
 
