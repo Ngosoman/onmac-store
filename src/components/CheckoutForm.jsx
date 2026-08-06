@@ -51,6 +51,11 @@ function normalizePaymentMethod(method) {
 const NOWPAYMENTS_METHODS = new Set(['Crypto', 'Cryptocurrency', 'NOWPayments']);
 const PAYPAL_METHODS = new Set(['Paypal']);
 const STRIPE_METHODS = new Set(['Stripe', 'Card', 'Credit Card', 'Debit Card', 'CREDIT_CARD', 'DEBIT_CARD', 'CARD']);
+const DEFAULT_USD_TO_KES_RATE = 129;
+const configuredUsdToKesRate = Number.parseFloat(String(import.meta.env.VITE_USD_TO_KES_RATE || DEFAULT_USD_TO_KES_RATE));
+const USD_TO_KES_RATE = Number.isFinite(configuredUsdToKesRate) && configuredUsdToKesRate > 0
+  ? configuredUsdToKesRate
+  : DEFAULT_USD_TO_KES_RATE;
 
 function isCryptoPayment(method) {
   return NOWPAYMENTS_METHODS.has(String(method || '').trim());
@@ -72,6 +77,36 @@ function getCurrencyForPayment(method) {
   return 'KES';
 }
 
+function parseUnitPriceNumber(rawPrice) {
+  const numericValue = Number.parseFloat(String(rawPrice).replace(/[^0-9.]/g, ''));
+  return Number.isFinite(numericValue) ? numericValue : 0;
+}
+
+function convertUsdAmountForMethod(amountInUsd, method) {
+  if (getCurrencyForPayment(method) === 'KES') {
+    return amountInUsd * USD_TO_KES_RATE;
+  }
+  return amountInUsd;
+}
+
+function getPayableUnitPrice(rawPrice, method) {
+  return convertUsdAmountForMethod(parseUnitPriceNumber(rawPrice), method).toFixed(2);
+}
+
+function calculatePayableTotal(cartItems, method) {
+  const total = cartItems.reduce((sum, item) => {
+    const unitPriceUsd = parseUnitPriceNumber(item.product?.price);
+    return sum + (convertUsdAmountForMethod(unitPriceUsd, method) * item.quantity);
+  }, 0);
+  return total.toFixed(2);
+}
+
+function formatCurrencyAmount(amount, currency) {
+  const numericAmount = Number.parseFloat(String(amount));
+  const safeAmount = Number.isFinite(numericAmount) ? numericAmount : 0;
+  return `${currency} ${safeAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 export default function CheckoutForm({ cartItems }) {
   const [selectedMethod, setSelectedMethod] = useState('Mpesa');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -80,11 +115,8 @@ export default function CheckoutForm({ cartItems }) {
   const isCrypto = isCryptoPayment(selectedMethod);
   const isPayPal = isPayPalPayment(selectedMethod);
   const isStripe = isStripePayment(selectedMethod);
-
-  function parseUnitPrice(rawPrice) {
-    const numericValue = Number.parseFloat(String(rawPrice).replace(/[^0-9.]/g, ''));
-    return Number.isFinite(numericValue) ? numericValue.toFixed(2) : '0.00';
-  }
+  const payableCurrency = getCurrencyForPayment(selectedMethod);
+  const payableTotal = calculatePayableTotal(cartItems, selectedMethod);
 
   function getRedirectLabel() {
     if (isCrypto) return 'Opening payment page...';
@@ -107,7 +139,7 @@ export default function CheckoutForm({ cartItems }) {
   }
 
   function getCurrencyLabel() {
-    return getCurrencyForPayment(selectedMethod);
+    return payableCurrency;
   }
 
   async function submitOrderAndRedirect(orderPayload) {
@@ -185,12 +217,12 @@ export default function CheckoutForm({ cartItems }) {
       customer_phone: phone,
       shipping_address: shippingAddress,
       payment_method: normalizePaymentMethod(selectedMethod),
-      currency: getCurrencyForPayment(selectedMethod),
+      currency: payableCurrency,
       items: cartItems.map((item) => ({
         product_id: item.product?.id,
         product_name: item.product?.name || 'Unnamed Product',
         quantity: item.quantity,
-        unit_price: parseUnitPrice(item.product?.price),
+        unit_price: getPayableUnitPrice(item.product?.price, selectedMethod),
       })),
     };
 
@@ -246,6 +278,10 @@ export default function CheckoutForm({ cartItems }) {
         <p className="payment-note">Selected payment method: {selectedMethod}</p>
         <p className="payment-note">{getPaymentDescription()}</p>
         <p className="payment-note">All prices for this store are charged in {getCurrencyLabel()}.</p>
+        <p className="payment-note">You will pay {formatCurrencyAmount(payableTotal, payableCurrency)} for this order.</p>
+        {payableCurrency === 'KES' ? (
+          <p className="payment-note">Pesapal conversion rate in use: 1 USD = KES {USD_TO_KES_RATE.toFixed(2)}.</p>
+        ) : null}
       </div>
       <div className="form-grid">
         <label>
