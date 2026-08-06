@@ -65,8 +65,11 @@ function isStripePayment(method) {
   return STRIPE_METHODS.has(String(method || '').trim()) || normalized === 'STRIPE' || normalized === 'CARD' || normalized === 'CREDITCARD' || normalized === 'DEBITCARD';
 }
 
-function getCurrencyForPayment() {
-  return 'USD';
+function getCurrencyForPayment(method) {
+  if (isPayPalPayment(method) || isStripePayment(method) || isCryptoPayment(method)) {
+    return 'USD';
+  }
+  return 'KES';
 }
 
 export default function CheckoutForm({ cartItems }) {
@@ -104,7 +107,7 @@ export default function CheckoutForm({ cartItems }) {
   }
 
   function getCurrencyLabel() {
-    return 'USD';
+    return getCurrencyForPayment(selectedMethod);
   }
 
   async function submitOrderAndRedirect(orderPayload) {
@@ -182,7 +185,7 @@ export default function CheckoutForm({ cartItems }) {
       customer_phone: phone,
       shipping_address: shippingAddress,
       payment_method: normalizePaymentMethod(selectedMethod),
-      currency: getCurrencyForPayment(),
+      currency: getCurrencyForPayment(selectedMethod),
       items: cartItems.map((item) => ({
         product_id: item.product?.id,
         product_name: item.product?.name || 'Unnamed Product',
