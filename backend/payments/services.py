@@ -763,20 +763,7 @@ class PaymentService:
 				currency=order.currency,
 			)
 			provider_adapter = PaymentService._get_provider_adapter(resolved_provider)
-			try:
-				provider_result = provider_adapter.create_payment(order, payment)
-			except serializers.ValidationError as exc:
-				logger.warning("Payment provider initialization failed for order %s using %s: %s", order.reference, resolved_provider, exc)
-				provider_result = {
-					"provider": resolved_provider,
-					"merchant_reference": order.merchant_reference,
-					"redirect_url": f"http://127.0.0.1:5173/payment-result?payment_status=completed&order_status=paid&order_reference={order.reference}&payment_reference={payment.reference}",
-					"provider_reference": str(payment.reference),
-					"provider_tracking_id": str(payment.reference),
-					"status": Payment.Status.COMPLETED,
-					"request_payload": {},
-					"response_payload": {"fallback": True, "message": "Provider unavailable; using local fallback."},
-				}
+			provider_result = provider_adapter.create_payment(order, payment)
 
 			payment.redirect_url = provider_result.get("redirect_url", "")
 			payment.provider_reference = provider_result.get("provider_reference")

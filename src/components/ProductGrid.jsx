@@ -1,41 +1,62 @@
 import { useMemo, useState } from 'react';
 import { products } from '../data/products';
 
-const categoryIcons = {
-  Wine: '🍷',
-  Beer: '🍺',
-  Spirits: '🥃',
-  'Non-Alcoholic': '🥤',
+const categoryTypes = ['All', 'Spirits', 'Wine', 'Beer', 'Non-Alcoholic'];
+
+const categoryEmblems = {
+  Wine: 'W',
+  Beer: 'B',
+  Spirits: 'S',
+  'Non-Alcoholic': 'N',
 };
 
 export default function ProductGrid({ onAddToCart }) {
   const [query, setQuery] = useState('');
+  const [activeCategory, setActiveCategory] = useState('All');
 
   const filteredProducts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
-    if (!normalizedQuery) {
-      return products;
-    }
-
     return products.filter((product) => {
+      if (activeCategory !== 'All' && product.category !== activeCategory) {
+        return false;
+      }
+
+      if (!normalizedQuery) {
+        return true;
+      }
+
       const searchableText = [product.name, product.category, product.size, product.note]
         .join(' ')
         .toLowerCase();
 
       return searchableText.includes(normalizedQuery);
     });
-  }, [query]);
+  }, [activeCategory, query]);
 
   return (
     <section className="products-section" id="products">
-      <div className="section-heading">
-        <p className="eyebrow">Featured</p>
-        <h2>Products</h2>
+      <div className="catalog-title-bar">
+        <p className="eyebrow">Best selling</p>
+        <h2>Wine &amp; Liquor</h2>
       </div>
-      <div className="product-search">
+
+      <div className="catalog-toolbar">
+        <div className="category-pills" aria-label="Filter products by category">
+          {categoryTypes.map((category) => (
+            <button
+              key={category}
+              type="button"
+              className={`category-pill${activeCategory === category ? ' category-pill--active' : ''}`}
+              onClick={() => setActiveCategory(category)}
+            >
+              {category}
+            </button>
+          ))}
+        </div>
+
         <label className="search-field">
-          Search products
+          <span>Search products</span>
           <input
             type="search"
             value={query}
@@ -43,27 +64,30 @@ export default function ProductGrid({ onAddToCart }) {
             placeholder="Search by name, category, size, or note"
           />
         </label>
-        <div className="search-meta">
-          <span>
-            Showing {filteredProducts.length} of {products.length}
-          </span>
-          {query ? (
-            <button type="button" className="ghost-button" onClick={() => setQuery('')}>
-              Clear search
-            </button>
-          ) : null}
-        </div>
       </div>
+
+      <div className="search-meta">
+        <span>
+          Showing {filteredProducts.length} of {products.length} items
+        </span>
+        {query ? (
+          <button type="button" className="ghost-button" onClick={() => setQuery('')}>
+            Clear search
+          </button>
+        ) : null}
+      </div>
+
       <div className="product-grid">
         {filteredProducts.map((product) => (
           <article key={product.id} className="product-card">
-            <div className="product-icon-badge" aria-hidden="true">
-              <span>{categoryIcons[product.category] ?? '🥂'}</span>
+            <div className="product-visual" aria-hidden="true">
+              <div className="bottle-shape" />
+              <div className="emblem">{categoryEmblems[product.category] ?? 'L'}</div>
             </div>
-            <p className="product-category">{product.category}</p>
+
+            <p className="product-category">{product.category} · {product.size}</p>
             <h3>{product.name}</h3>
-            <p className="product-size">{product.size}</p>
-            <p>{product.note}</p>
+            <p className="product-note">{product.note}</p>
             <div className="product-footer">
               <strong>{product.price}</strong>
               <button type="button" onClick={() => onAddToCart(product)}>

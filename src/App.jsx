@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import Header from './components/Header';
-import Hero from './components/Hero';
 import ProductGrid from './components/ProductGrid';
 import CartSection from './components/CartSection';
 import CheckoutForm from './components/CheckoutForm';
@@ -91,7 +90,6 @@ export default function App() {
       ) : null}
       <Header cartCount={cartCount} />
       <main>
-        <Hero />
         <ProductGrid onAddToCart={handleAddToCart} />
         <CartSection
           cartItems={cartItems}

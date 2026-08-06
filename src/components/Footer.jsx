@@ -1,8 +1,8 @@
 export default function Footer() {
   return (
     <footer className="site-footer">
-      <p>Onmacc Liquor Store</p>
-      <span>Onmacc Store</span>
+      <p>Onmac Liquor Store</p>
+      <span>Onmac Store</span>
     </footer>
   );
 }
