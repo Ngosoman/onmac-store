@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.test import TestCase
+from django.test.utils import override_settings
 from rest_framework import serializers
 
 from .models import Order
@@ -114,3 +115,25 @@ class OrderServiceTests(TestCase):
 
 		with self.assertRaises(serializers.ValidationError):
 			OrderService.update_order(order, {"customer_name": "Changed"})
+
+	@override_settings(USD_TO_KES_RATE="130.50")
+	def test_create_order_converts_usd_to_kes_for_pesapal_methods(self):
+		data = self._validated_order_data()
+		data["currency"] = "USD"
+
+		order = OrderService.create_order(data)
+
+		order.refresh_from_db()
+		first_item = order.items.order_by("id").first()
+		self.assertEqual(order.currency, "KES")
+		self.assertEqual(first_item.unit_price, Decimal("19575.00"))
+		self.assertEqual(order.total_amount, Decimal("45675.00"))
+
+	def test_create_order_rejects_non_usd_non_kes_currency_for_pesapal_methods(self):
+		data = self._validated_order_data()
+		data["currency"] = "GBP"
+
+		with self.assertRaises(serializers.ValidationError) as exc:
+			OrderService.create_order(data)
+
+		self.assertIn("currency", exc.exception.detail)

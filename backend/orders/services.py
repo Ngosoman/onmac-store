@@ -3,6 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
+from django.conf import settings
 from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
@@ -13,6 +14,51 @@ class OrderService:
 	"""Application service responsible for order creation workflows."""
 
 	MONEY_PRECISION = Decimal("0.01")
+	PESAPAL_METHODS = {"PESAPAL", "MPESA", "AIRTEL", "MASTERCARD", "VISACARDS"}
+
+	@staticmethod
+	def _normalize_payment_method(payment_method: Any) -> str:
+		return str(payment_method or "").strip().upper().replace(" ", "_")
+
+	@staticmethod
+	def _is_pesapal_method(payment_method: Any) -> bool:
+		return OrderService._normalize_payment_method(payment_method) in OrderService.PESAPAL_METHODS
+
+	@staticmethod
+	def _usd_to_kes_rate() -> Decimal:
+		rate = Decimal(str(getattr(settings, "USD_TO_KES_RATE", "129")))
+		if rate <= 0:
+			raise serializers.ValidationError({"detail": ["USD_TO_KES_RATE must be greater than zero."]})
+		return rate
+
+	@staticmethod
+	def _apply_pesapal_currency_guard(*, order_data: dict[str, Any], items_data: list[dict[str, Any]]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+		if not OrderService._is_pesapal_method(order_data.get("payment_method")):
+			return order_data, items_data
+
+		currency = str(order_data.get("currency") or "").strip().upper()
+		if not currency:
+			currency = Order.Currency.KES
+
+		if currency == Order.Currency.KES:
+			order_data["currency"] = Order.Currency.KES
+			return order_data, items_data
+
+		if currency != Order.Currency.USD:
+			raise serializers.ValidationError(
+				{"currency": ["Pesapal payments support USD input conversion to KES or direct KES only."]}
+			)
+
+		rate = OrderService._usd_to_kes_rate()
+		converted_items: list[dict[str, Any]] = []
+		for item in items_data:
+			converted_item = dict(item)
+			unit_price = Decimal(str(item["unit_price"]))
+			converted_item["unit_price"] = (unit_price * rate).quantize(OrderService.MONEY_PRECISION)
+			converted_items.append(converted_item)
+
+		order_data["currency"] = Order.Currency.KES
+		return order_data, converted_items
 
 	@staticmethod
 	def _calculate_item_subtotal(*, quantity: int, unit_price: Decimal) -> Decimal:
@@ -52,6 +98,8 @@ class OrderService:
 		if not items_data:
 			raise serializers.ValidationError({"items": ["At least one order item is required."]})
 
+		order_data, items_data = OrderService._apply_pesapal_currency_guard(order_data=order_data, items_data=items_data)
+
 		try:
 			order = Order.objects.create(**order_data)
 			created_items = OrderService._create_order_items(order=order, items_data=items_data)
@@ -73,6 +121,17 @@ class OrderService:
 
 		order_data = validated_data.copy()
 		items_data = order_data.pop("items", None)
+
+		if items_data is not None and items_data:
+			guard_order_data = {
+				"payment_method": order_data.get("payment_method", order.payment_method),
+				"currency": order_data.get("currency", order.currency),
+			}
+			guard_order_data, items_data = OrderService._apply_pesapal_currency_guard(
+				order_data=guard_order_data,
+				items_data=items_data,
+			)
+			order_data["currency"] = guard_order_data["currency"]
 
 		for field_name, value in order_data.items():
 			setattr(order, field_name, value)
