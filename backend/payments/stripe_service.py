@@ -31,7 +31,9 @@ class StripeService:
 
 	@staticmethod
 	def _build_success_url(session_id: str) -> str:
-		base_url = StripeService._get_setting("STRIPE_SUCCESS_URL", required=False, default="").strip()
+		base_url = StripeService._get_setting("FRONTEND_PAYMENT_RESULT_URL", required=False, default="").strip()
+		if not base_url:
+			base_url = StripeService._get_setting("STRIPE_SUCCESS_URL", required=False, default="").strip()
 		if base_url:
 			separator = "&" if "?" in base_url else "?"
 			return f"{base_url}{separator}session_id={session_id}"
@@ -109,7 +111,11 @@ class StripeService:
 			"line_items": StripeService._build_line_items(order),
 		}
 		if not request_payload["success_url"]:
-			request_payload["success_url"] = f"{settings.SITE_URL if hasattr(settings, 'SITE_URL') else 'http://localhost:5173'}?session_id={{CHECKOUT_SESSION_ID}}"
+			fallback_base = str(getattr(settings, "FRONTEND_PAYMENT_RESULT_URL", "") or "").strip()
+			if not fallback_base:
+				fallback_base = f"{settings.SITE_URL if hasattr(settings, 'SITE_URL') else 'http://localhost:5173'}/payment-result"
+			separator = "&" if "?" in fallback_base else "?"
+			request_payload["success_url"] = f"{fallback_base}{separator}session_id={{CHECKOUT_SESSION_ID}}"
 		try:
 			session = stripe.checkout.Session.create(
 				mode="payment",

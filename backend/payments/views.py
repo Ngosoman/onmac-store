@@ -141,6 +141,7 @@ class PaymentIPNAPIView(_PesapalNotificationMixin, APIView):
 class StripeSuccessAPIView(APIView):
 	def get(self, request, *args, **kwargs):
 		session_id = request.query_params.get("session_id") or request.query_params.get("session")
+		no_redirect = str(request.query_params.get("no_redirect") or "").strip().lower() in {"1", "true", "yes"}
 		if not session_id:
 			return Response({"detail": ["Missing Stripe session identifier."]}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -172,7 +173,7 @@ class StripeSuccessAPIView(APIView):
 			payment.order.save(update_fields=["status", "updated_at"])
 
 		result_url = str(getattr(settings, "FRONTEND_PAYMENT_RESULT_URL", "")).strip()
-		if result_url:
+		if result_url and not no_redirect:
 			query = urlencode({
 				"payment_reference": str(payment.reference),
 				"payment_status": payment.status,
