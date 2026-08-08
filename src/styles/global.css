@@ -628,16 +628,96 @@ label {
   margin-top: 24px;
 }
 
-.payment-result-grid {
-  margin: 14px 0;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 10px;
-  background: var(--surface-soft);
+.payment-result-card--success {
+  border-color: #cde7d5;
+  box-shadow: 0 16px 34px rgba(29, 143, 58, 0.08);
 }
 
-.payment-result-grid p {
-  margin: 8px 0;
+.payment-result-card--failed {
+  border-color: #f0d3cf;
+  box-shadow: 0 16px 34px rgba(178, 54, 42, 0.08);
+}
+
+.payment-result-card--pending {
+  border-color: #ead9c2;
+  box-shadow: 0 16px 34px rgba(143, 99, 38, 0.08);
+}
+
+.payment-result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.payment-result-message {
+  margin: 10px 0 0;
+  color: #4f4f4a;
+  max-width: 62ch;
+}
+
+.payment-status-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.payment-status-pill--success {
+  background: #eef9f1;
+  color: #1f6b35;
+}
+
+.payment-status-pill--failed {
+  background: #fff1ef;
+  color: #9b2f23;
+}
+
+.payment-status-pill--pending {
+  background: #fff6ea;
+  color: #8b5a17;
+}
+
+.payment-result-grid {
+  margin: 18px 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 8px;
+  background: var(--surface-soft);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.payment-result-row {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.payment-result-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #7a7a72;
+}
+
+.payment-result-value {
+  font-size: 1rem;
+  line-height: 1.35;
+  color: #20201d;
+}
+
+.payment-result-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .empty-products {
@@ -688,6 +768,10 @@ label {
     flex-direction: column;
     align-items: flex-start;
   }
+
+  .payment-result-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 560px) {
@@ -709,5 +793,9 @@ label {
 
   .catalog-title-bar h2 {
     font-size: 1.3rem;
+  }
+
+  .payment-result-header {
+    flex-direction: column;
   }
 }

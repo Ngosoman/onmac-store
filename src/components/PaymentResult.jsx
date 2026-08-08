@@ -35,6 +35,14 @@ function shortenTrackingId(value) {
   return `${raw.slice(0, 6)}...${raw.slice(-3)}`;
 }
 
+function toTitleCase(value) {
+  return String(value || '')
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 export default function PaymentResult() {
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
   const sessionId = params.get('session_id') || params.get('session') || '';
@@ -104,6 +112,8 @@ export default function PaymentResult() {
 
   const isSuccess = paymentStatus === 'completed' || paymentStatus === 'succeeded' || paymentStatus === 'paid' || orderStatus === 'paid' || orderStatus === 'completed';
   const isFailed = paymentStatus === 'failed' || orderStatus === 'failed' || paymentStatus === 'cancelled' || orderStatus === 'cancelled';
+  const statusTone = isSuccess ? 'success' : isFailed ? 'failed' : 'pending';
+  const statusLabel = isSuccess ? 'Payment confirmed' : isFailed ? 'Needs attention' : 'Verifying payment';
 
   const title = isSuccess
     ? 'Order received'
@@ -119,23 +129,41 @@ export default function PaymentResult() {
         ? 'Your payment is being verified. This usually takes a few seconds.'
         : 'We received your callback and are still confirming the final provider status.';
 
+  const detailRows = [
+    ['Order reference', orderReference],
+    ['Payment reference', paymentReference],
+    ['Tracking ID', orderTrackingIdDisplay, orderTrackingId],
+    ['Order status', toTitleCase(orderStatus || 'unknown')],
+    ['Payment status', toTitleCase(paymentStatus || 'unknown')],
+  ];
+
   return (
     <div className="app-shell">
       <main>
-        <section className="payment-result-card">
-          <p className="eyebrow">Payment Result</p>
-          <h2>{title}</h2>
-          <p>{message}</p>
-
-          <div className="payment-result-grid">
-            <p><strong>Order reference:</strong> {orderReference}</p>
-            <p><strong>Payment reference:</strong> {paymentReference}</p>
-            <p><strong>Tracking ID:</strong> <span title={orderTrackingId}>{orderTrackingIdDisplay}</span></p>
-            <p><strong>Order status:</strong> {orderStatus || 'unknown'}</p>
-            <p><strong>Payment status:</strong> {paymentStatus || 'unknown'}</p>
+        <section className={`payment-result-card payment-result-card--${statusTone}`}>
+          <div className="payment-result-header">
+            <div>
+              <p className="eyebrow">Payment Result</p>
+              <h2>{title}</h2>
+            </div>
+            <span className={`payment-status-pill payment-status-pill--${statusTone}`}>{statusLabel}</span>
           </div>
 
-          <a className="submit-button" href="/">Back to store</a>
+          <p className="payment-result-message">{message}</p>
+
+          <div className="payment-result-grid">
+            {detailRows.map(([label, value, titleValue]) => (
+              <div key={label} className="payment-result-row">
+                <span className="payment-result-label">{label}</span>
+                <strong className="payment-result-value" title={titleValue || value}>{value}</strong>
+              </div>
+            ))}
+          </div>
+
+          <div className="payment-result-actions">
+            <a className="submit-button" href="/">Back to store</a>
+            {!isSuccess ? <a className="ghost-button" href="/#checkout">Return to checkout</a> : null}
+          </div>
         </section>
       </main>
     </div>
