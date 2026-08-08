@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { products } from '../data/products';
 
-const categoryTypes = ['All', 'Spirits', 'Wine', 'Beer', 'Non-Alcoholic'];
+const categoryTypes = ['All', ...Array.from(new Set(products.map((product) => product.category)))];
+const subcategoryTypes = ['All', ...Array.from(new Set(products.map((product) => product.subcategory)))];
 
 const categoryEmblems = {
   Wine: 'W',
@@ -13,6 +14,7 @@ const categoryEmblems = {
 export default function ProductGrid({ onAddToCart }) {
   const [query, setQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
+  const [activeSubcategory, setActiveSubcategory] = useState('All');
   const [imageErrors, setImageErrors] = useState({});
 
   const filteredProducts = useMemo(() => {
@@ -23,17 +25,29 @@ export default function ProductGrid({ onAddToCart }) {
         return false;
       }
 
+      if (activeSubcategory !== 'All' && product.subcategory !== activeSubcategory) {
+        return false;
+      }
+
       if (!normalizedQuery) {
         return true;
       }
 
-      const searchableText = [product.name, product.category, product.size, product.note]
+      const searchableText = [
+        product.name,
+        product.brand,
+        product.category,
+        product.subcategory,
+        product.size,
+        product.note,
+        ...(product.tags || []),
+      ]
         .join(' ')
         .toLowerCase();
 
       return searchableText.includes(normalizedQuery);
     });
-  }, [activeCategory, query]);
+  }, [activeCategory, activeSubcategory, query]);
 
   return (
     <section className="products-section" id="products">
@@ -43,17 +57,32 @@ export default function ProductGrid({ onAddToCart }) {
       </div>
 
       <div className="catalog-toolbar">
-        <div className="category-pills" aria-label="Filter products by category">
-          {categoryTypes.map((category) => (
-            <button
-              key={category}
-              type="button"
-              className={`category-pill${activeCategory === category ? ' category-pill--active' : ''}`}
-              onClick={() => setActiveCategory(category)}
-            >
-              {category}
-            </button>
-          ))}
+        <div className="catalog-filter-stack">
+          <div className="category-pills" aria-label="Filter products by category">
+            {categoryTypes.map((category) => (
+              <button
+                key={category}
+                type="button"
+                className={`category-pill${activeCategory === category ? ' category-pill--active' : ''}`}
+                onClick={() => setActiveCategory(category)}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+
+          <div className="subcategory-pills" aria-label="Filter products by drink type">
+            {subcategoryTypes.map((subcategory) => (
+              <button
+                key={subcategory}
+                type="button"
+                className={`subcategory-pill${activeSubcategory === subcategory ? ' subcategory-pill--active' : ''}`}
+                onClick={() => setActiveSubcategory(subcategory)}
+              >
+                {subcategory}
+              </button>
+            ))}
+          </div>
         </div>
 
         <label className="search-field">
@@ -62,8 +91,9 @@ export default function ProductGrid({ onAddToCart }) {
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by name, category, size, or note"
+            placeholder="Search by brand, drink type, category, size, or note"
           />
+          <small>Try: Johnnie Walker, tequila, gin, cabernet, tonic, lager</small>
         </label>
       </div>
 
@@ -71,8 +101,15 @@ export default function ProductGrid({ onAddToCart }) {
         <span>
           Showing {filteredProducts.length} of {products.length} items
         </span>
-        {query ? (
-          <button type="button" className="ghost-button" onClick={() => setQuery('')}>
+        {query || activeSubcategory !== 'All' ? (
+          <button
+            type="button"
+            className="ghost-button"
+            onClick={() => {
+              setQuery('');
+              setActiveSubcategory('All');
+            }}
+          >
             Clear search
           </button>
         ) : null}
@@ -104,7 +141,8 @@ export default function ProductGrid({ onAddToCart }) {
               <div className="product-visual-badge" aria-hidden="true">{categoryEmblems[product.category] ?? 'L'}</div>
             </div>
 
-            <p className="product-category">{product.category} · {product.size}</p>
+            <p className="product-category">{product.category} · {product.subcategory} · {product.size}</p>
+            <p className="product-brand">{product.brand}</p>
             <h3>{product.name}</h3>
             <p className="product-note">{product.note}</p>
             <div className="product-footer">
