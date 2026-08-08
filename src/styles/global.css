@@ -285,6 +285,26 @@ input {
   color: var(--muted);
 }
 
+.load-more-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 18px 0 4px;
+}
+
+.load-more-button {
+  border: 1px solid #d59a55;
+  border-radius: 999px;
+  padding: 12px 20px;
+  background: linear-gradient(180deg, #fff4e8 0%, #ffe2c0 100%);
+  color: #8f3f00;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.load-more-button:hover {
+  background: linear-gradient(180deg, #ffeecf 0%, #ffd8ac 100%);
+}
+
 .product-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

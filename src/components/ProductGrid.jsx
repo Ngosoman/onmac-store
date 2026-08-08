@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { products } from '../data/products';
 
 const categoryTypes = ['All', ...Array.from(new Set(products.map((product) => product.category)))];
 const subcategoryTypes = ['All', ...Array.from(new Set(products.map((product) => product.subcategory)))];
+const ITEMS_PER_PAGE = 24;
 
 const categoryEmblems = {
   Wine: 'W',
@@ -16,6 +17,7 @@ export default function ProductGrid({ onAddToCart }) {
   const [activeCategory, setActiveCategory] = useState('All');
   const [activeSubcategory, setActiveSubcategory] = useState('All');
   const [imageErrors, setImageErrors] = useState({});
+  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
 
   const filteredProducts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -48,6 +50,17 @@ export default function ProductGrid({ onAddToCart }) {
       return searchableText.includes(normalizedQuery);
     });
   }, [activeCategory, activeSubcategory, query]);
+
+  const visibleProducts = useMemo(
+    () => filteredProducts.slice(0, visibleCount),
+    [filteredProducts, visibleCount],
+  );
+
+  const hasMoreProducts = visibleProducts.length < filteredProducts.length;
+
+  useEffect(() => {
+    setVisibleCount(ITEMS_PER_PAGE);
+  }, [query, activeCategory, activeSubcategory]);
 
   return (
     <section className="products-section" id="products">
@@ -99,14 +112,15 @@ export default function ProductGrid({ onAddToCart }) {
 
       <div className="search-meta">
         <span>
-          Showing {filteredProducts.length} of {products.length} items
+          Showing {visibleProducts.length} of {filteredProducts.length} results from {products.length} items
         </span>
-        {query || activeSubcategory !== 'All' ? (
+        {query || activeCategory !== 'All' || activeSubcategory !== 'All' ? (
           <button
             type="button"
             className="ghost-button"
             onClick={() => {
               setQuery('');
+              setActiveCategory('All');
               setActiveSubcategory('All');
             }}
           >
@@ -116,7 +130,7 @@ export default function ProductGrid({ onAddToCart }) {
       </div>
 
       <div className="product-grid">
-        {filteredProducts.map((product) => (
+        {visibleProducts.map((product) => (
           <article key={product.id} className="product-card">
             <div className="product-visual">
               {product.image && !imageErrors[product.id] ? (
@@ -157,6 +171,17 @@ export default function ProductGrid({ onAddToCart }) {
       {filteredProducts.length === 0 ? (
         <div className="empty-products">
           <p>No products matched your search.</p>
+        </div>
+      ) : null}
+      {hasMoreProducts ? (
+        <div className="load-more-wrap">
+          <button
+            type="button"
+            className="load-more-button"
+            onClick={() => setVisibleCount((current) => current + ITEMS_PER_PAGE)}
+          >
+            Load more products
+          </button>
         </div>
       ) : null}
     </section>
