@@ -1,5 +1,34 @@
-function imageUrl(lock, query) {
-  return `https://loremflickr.com/900/700/${query}?lock=${lock}`;
+const remoteImagesBySeries = {
+  'Spirits:Scotch': 'https://images.unsplash.com/photo-1569529465841-dfecdab7503b?auto=format&fit=crop&w=900&q=80',
+  'Spirits:Bourbon': 'https://images.unsplash.com/photo-1582819509237-d78e6765fdb1?auto=format&fit=crop&w=900&q=80',
+  'Spirits:Irish Whiskey': 'https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=900&q=80',
+  'Spirits:Cognac': 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=900&q=80',
+  'Spirits:Vodka': 'https://images.unsplash.com/photo-1607622750671-6cd9a99f0c91?auto=format&fit=crop&w=900&q=80',
+  'Spirits:Gin': 'https://images.unsplash.com/photo-1575650772417-e6b418b0d932?auto=format&fit=crop&w=900&q=80',
+  'Spirits:Tequila': 'https://images.unsplash.com/photo-1514361892635-eae31ec8b145?auto=format&fit=crop&w=900&q=80',
+  'Spirits:Rum': 'https://images.unsplash.com/photo-1563379091339-03246963d29a?auto=format&fit=crop&w=900&q=80',
+  'Spirits:Liqueur': 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=900&q=80',
+  'Wine:Champagne': 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=900&q=80',
+  'Wine:Red Wine': 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?auto=format&fit=crop&w=900&q=80',
+  'Wine:White Wine': 'https://images.unsplash.com/photo-1516594915697-87eb3b1c14ea?auto=format&fit=crop&w=900&q=80',
+  'Wine:Rose': 'https://images.unsplash.com/photo-1558001373-7b93ee48ffa0?auto=format&fit=crop&w=900&q=80',
+  'Wine:Moscato': 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=900&q=80',
+  'Wine:Prosecco': 'https://images.unsplash.com/photo-1497534446932-c925b458314e?auto=format&fit=crop&w=900&q=80',
+  'Beer:Lager': 'https://images.unsplash.com/photo-1563379091339-03246963d29a?auto=format&fit=crop&w=900&q=80',
+  'Beer:IPA': 'https://images.unsplash.com/photo-1608270586620-248524c67de9?auto=format&fit=crop&w=900&q=80',
+  'Beer:Stout': 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=900&q=80',
+  'Beer:Cider': 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=900&q=80',
+  'Beer:Wheat Beer': 'https://images.unsplash.com/photo-1436076863939-06870fe779c2?auto=format&fit=crop&w=900&q=80',
+  'Non-Alcoholic:Tonic': 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=900&q=80',
+  'Non-Alcoholic:Mixer': 'https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=900&q=80',
+  'Non-Alcoholic:Sparkling Juice': 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=900&q=80',
+  'Non-Alcoholic:Soft Drink': 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=900&q=80',
+};
+
+const fallbackRemoteImage = 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=900&q=80';
+
+function imageUrl(category, subcategory) {
+  return remoteImagesBySeries[`${category}:${subcategory}`] || fallbackRemoteImage;
 }
 
 function formatPrice(amount) {
@@ -7,7 +36,6 @@ function formatPrice(amount) {
 }
 
 let nextId = 1;
-let nextLock = 300;
 
 function createSeries({
   category,
@@ -36,7 +64,7 @@ function createSeries({
       price: formatPrice(basePrice + (index * step)),
       note,
       tags: combinedTags,
-      image: imageUrl(nextLock++, imageQuery),
+      image: imageUrl(category, subcategory),
     };
   });
 }
