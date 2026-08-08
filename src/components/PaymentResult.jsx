@@ -24,6 +24,17 @@ function apiUrl(path) {
   return `${API_BASE_URL}${path}`;
 }
 
+function shortenTrackingId(value) {
+  const raw = String(value || '').trim();
+  if (!raw) {
+    return 'N/A';
+  }
+  if (raw.length <= 14) {
+    return raw;
+  }
+  return `${raw.slice(0, 6)}...${raw.slice(-3)}`;
+}
+
 export default function PaymentResult() {
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
   const sessionId = params.get('session_id') || params.get('session') || '';
@@ -81,7 +92,15 @@ export default function PaymentResult() {
   const orderStatus = String(statusPayload.order_status || '').toLowerCase();
   const orderReference = statusPayload.order_reference || 'N/A';
   const paymentReference = statusPayload.payment_reference || 'N/A';
-  const orderTrackingId = statusPayload.order_tracking_id || 'N/A';
+  const normalizedTrackingId = String(statusPayload.order_tracking_id || '').trim();
+  const hasConcreteTrackingId = normalizedTrackingId
+    && normalizedTrackingId.toLowerCase() !== 'n/a'
+    && normalizedTrackingId.toLowerCase() !== 'unknown'
+    && normalizedTrackingId.toLowerCase() !== 'none'
+    && normalizedTrackingId.toLowerCase() !== 'null'
+    && normalizedTrackingId.toLowerCase() !== 'undefined';
+  const orderTrackingId = hasConcreteTrackingId ? normalizedTrackingId : (sessionId || 'N/A');
+  const orderTrackingIdDisplay = shortenTrackingId(orderTrackingId);
 
   const isSuccess = paymentStatus === 'completed' || paymentStatus === 'succeeded' || paymentStatus === 'paid' || orderStatus === 'paid' || orderStatus === 'completed';
   const isFailed = paymentStatus === 'failed' || orderStatus === 'failed' || paymentStatus === 'cancelled' || orderStatus === 'cancelled';
@@ -111,7 +130,7 @@ export default function PaymentResult() {
           <div className="payment-result-grid">
             <p><strong>Order reference:</strong> {orderReference}</p>
             <p><strong>Payment reference:</strong> {paymentReference}</p>
-            <p><strong>Tracking ID:</strong> {orderTrackingId}</p>
+            <p><strong>Tracking ID:</strong> <span title={orderTrackingId}>{orderTrackingIdDisplay}</span></p>
             <p><strong>Order status:</strong> {orderStatus || 'unknown'}</p>
             <p><strong>Payment status:</strong> {paymentStatus || 'unknown'}</p>
           </div>
