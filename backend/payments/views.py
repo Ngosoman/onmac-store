@@ -162,33 +162,49 @@ class StripeSuccessAPIView(APIView):
 		if payment is None and order_reference:
 			payment = Payment.objects.select_related("order").filter(order__reference=order_reference).order_by("-created_at").first()
 		if payment is None:
-			payment = Payment.objects.select_related("order").filter(provider_tracking_id=session_id).order_by("-created_at").first()
+			payment = Payment.objects.select_related("order").filter(provider_reference=session_id).order_by("-created_at").first()
 		if payment is None:
-			return Response({"detail": ["Payment record not found for Stripe success callback."]}, status=status.HTTP_404_NOT_FOUND)
+			payment = Payment.objects.select_related("order").filter(provider_tracking_id=session_id).order_by("-created_at").first()
 
-		if str(verification.get("payment_status") or "").lower() in {"paid", "succeeded", "complete"}:
+		provider_payment_status = str(verification.get("payment_status") or "").strip().lower()
+		is_paid = provider_payment_status in {"paid", "succeeded", "complete"}
+		resolved_payment_status = Payment.Status.COMPLETED if is_paid else Payment.Status.PENDING
+		resolved_order_status = Order.Status.PAID if is_paid else Order.Status.PENDING
+
+		if payment is not None and is_paid:
 			payment.status = Payment.Status.COMPLETED
 			payment.save(update_fields=["status", "updated_at"])
 			payment.order.status = Order.Status.PAID
 			payment.order.save(update_fields=["status", "updated_at"])
+			resolved_payment_status = payment.status
+			resolved_order_status = payment.order.status
+		elif payment is not None:
+			resolved_payment_status = payment.status
+			resolved_order_status = payment.order.status
+
+		resolved_payment_reference = str(payment.reference) if payment is not None else str(payment_reference or session_id)
+		resolved_order_reference = str(payment.order.reference) if payment is not None else str(order_reference or "")
 
 		result_url = str(getattr(settings, "FRONTEND_PAYMENT_RESULT_URL", "")).strip()
 		if result_url and not no_redirect:
 			query = urlencode({
-				"payment_reference": str(payment.reference),
-				"payment_status": payment.status,
-				"order_reference": str(payment.order.reference),
-				"order_status": payment.order.status,
+				"payment_reference": resolved_payment_reference,
+				"payment_status": resolved_payment_status,
+				"order_reference": resolved_order_reference,
+				"order_status": resolved_order_status,
+				"order_tracking_id": str(session_id),
 			})
 			separator = "&" if "?" in result_url else "?"
 			return redirect(f"{result_url}{separator}{query}")
 
 		return Response({
 			"message": "Stripe payment verified.",
-			"payment_reference": str(payment.reference),
-			"payment_status": payment.status,
-			"order_reference": str(payment.order.reference),
-			"order_status": payment.order.status,
+			"payment_reference": resolved_payment_reference,
+			"payment_status": resolved_payment_status,
+			"order_reference": resolved_order_reference,
+			"order_status": resolved_order_status,
+			"order_tracking_id": str(session_id),
+			"provider_payment_status": provider_payment_status,
 		}, status=status.HTTP_200_OK)
 
 

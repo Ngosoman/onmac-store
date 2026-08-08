@@ -33,7 +33,7 @@ export default function PaymentResult() {
     order_status: params.get('order_status') || '',
     order_reference: params.get('order_reference') || 'N/A',
     payment_reference: params.get('payment_reference') || 'N/A',
-    order_tracking_id: params.get('order_tracking_id') || 'N/A',
+    order_tracking_id: params.get('order_tracking_id') || sessionId || 'N/A',
   });
   const [loading, setLoading] = useState(Boolean(sessionId));
 
@@ -59,7 +59,7 @@ export default function PaymentResult() {
           order_status: data.order_status || current.order_status,
           order_reference: data.order_reference || current.order_reference,
           payment_reference: data.payment_reference || current.payment_reference,
-          order_tracking_id: current.order_tracking_id,
+          order_tracking_id: data.order_tracking_id || current.order_tracking_id,
         }));
       } catch {
         // Keep existing query-param state if verification request fails.
