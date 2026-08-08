@@ -291,9 +291,41 @@ input {
 
 .product-visual {
   height: 170px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #f2f2ef;
+  margin-bottom: 6px;
+}
+
+.product-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.product-photo-fallback {
+  width: 100%;
+  height: 100%;
   display: grid;
   place-items: center;
-  margin-bottom: 6px;
+  background: linear-gradient(180deg, #f5f0e4 0%, #ece6d8 100%);
+}
+
+.product-visual-badge {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #d9d9d9;
+  color: #676767;
+  font-size: 0.82rem;
 }
 
 .bottle-shape {

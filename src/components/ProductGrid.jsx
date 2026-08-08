@@ -13,6 +13,7 @@ const categoryEmblems = {
 export default function ProductGrid({ onAddToCart }) {
   const [query, setQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
+  const [imageErrors, setImageErrors] = useState({});
 
   const filteredProducts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -80,9 +81,27 @@ export default function ProductGrid({ onAddToCart }) {
       <div className="product-grid">
         {filteredProducts.map((product) => (
           <article key={product.id} className="product-card">
-            <div className="product-visual" aria-hidden="true">
-              <div className="bottle-shape" />
-              <div className="emblem">{categoryEmblems[product.category] ?? 'L'}</div>
+            <div className="product-visual">
+              {product.image && !imageErrors[product.id] ? (
+                <img
+                  className="product-photo"
+                  src={product.image}
+                  alt={product.name}
+                  loading="lazy"
+                  onError={(event) => {
+                    setImageErrors((current) => ({
+                      ...current,
+                      [product.id]: true,
+                    }));
+                  }}
+                />
+              ) : null}
+              {(!product.image || imageErrors[product.id]) ? (
+                <div className="product-photo-fallback" aria-hidden="true">
+                  <div className="bottle-shape" />
+                </div>
+              ) : null}
+              <div className="product-visual-badge" aria-hidden="true">{categoryEmblems[product.category] ?? 'L'}</div>
             </div>
 
             <p className="product-category">{product.category} · {product.size}</p>

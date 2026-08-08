@@ -1,4 +1,31 @@
-export const products = [
+const productImages = {
+  1: 'https://loremflickr.com/900/700/red%20wine,bottle?lock=101',
+  2: 'https://loremflickr.com/900/700/lager,beer?lock=102',
+  3: 'https://loremflickr.com/900/700/bourbon,whiskey?lock=103',
+  4: 'https://loremflickr.com/900/700/mocktail,drink?lock=104',
+  5: 'https://loremflickr.com/900/700/pilsner,beer%20bottle?lock=105',
+  6: 'https://loremflickr.com/900/700/wheat%20beer,can?lock=106',
+  7: 'https://loremflickr.com/900/700/stout,beer?lock=107',
+  8: 'https://loremflickr.com/900/700/ipa,beer%20can?lock=108',
+  9: 'https://loremflickr.com/900/700/lager,bottle?lock=109',
+  10: 'https://loremflickr.com/900/700/chardonnay,wine?lock=110',
+  11: 'https://loremflickr.com/900/700/rose%20wine,bottle?lock=111',
+  12: 'https://loremflickr.com/900/700/cabernet,wine?lock=112',
+  13: 'https://loremflickr.com/900/700/moscato,wine?lock=113',
+  14: 'https://loremflickr.com/900/700/merlot,wine?lock=114',
+  15: 'https://loremflickr.com/900/700/vodka,bottle?lock=115',
+  16: 'https://loremflickr.com/900/700/rum,bottle?lock=116',
+  17: 'https://loremflickr.com/900/700/gin,bottle?lock=117',
+  18: 'https://loremflickr.com/900/700/whiskey,bottle?lock=118',
+  19: 'https://loremflickr.com/900/700/aperitif,bottle?lock=119',
+  20: 'https://loremflickr.com/900/700/sparkling%20apple,drink?lock=120',
+  21: 'https://loremflickr.com/900/700/tonic%20water,bottle?lock=121',
+  22: 'https://loremflickr.com/900/700/ginger,lime,drink?lock=122',
+  23: 'https://loremflickr.com/900/700/coconut%20water,drink?lock=123',
+  24: 'https://loremflickr.com/900/700/tropical,mocktail?lock=124',
+};
+
+const baseProducts = [
   {
     id: 1,
     name: 'Reserve Red Blend',
@@ -192,3 +219,8 @@ export const products = [
     note: 'Pineapple, passion fruit, and mint',
   },
 ];
+
+export const products = baseProducts.map((product) => ({
+  ...product,
+  image: productImages[product.id] || '',
+}));
