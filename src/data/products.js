@@ -422,4 +422,21 @@ const catalogSeries = [
   },
 ];
 
-export const products = catalogSeries.flatMap(createSeries);
+const generatedProducts = catalogSeries.flatMap(createSeries);
+
+const customProducts = [
+  {
+    id: nextId++,
+    name: 'RedBull Energy Drink',
+    brand: 'RedBull',
+    category: 'Non-Alcoholic',
+    subcategory: 'Soft Drink',
+    size: '250ml',
+    price: formatPrice(1.08),
+    note: 'Classic RedBull energy drink with a crisp, energizing taste.',
+    tags: ['redbull', 'energy drink', 'soft drink', 'non-alcoholic'],
+    image: imageUrl('Non-Alcoholic', 'Soft Drink', generatedProducts.length),
+  },
+];
+
+export const products = [...generatedProducts, ...customProducts];
