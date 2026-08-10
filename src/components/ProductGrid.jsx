@@ -9,6 +9,7 @@ const categoryEmblems = {
   Beer: 'B',
   Spirits: 'S',
   'Non-Alcoholic': 'N',
+  Chaser: 'C',
 };
 
 export default function ProductGrid({ onAddToCart, query, onQueryChange }) {
