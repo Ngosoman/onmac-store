@@ -1,8 +1,11 @@
+import onmacLogo from '../assets/onmac-logo.png';
+
 export default function Header({ cartCount, searchQuery, onSearchChange }) {
   return (
     <header className="site-header">
       <div className="header-top">
         <a className="brand-wrap" href="#products" aria-label="Go to products">
+          <img className="brand-logo" src={onmacLogo} alt="Onmac logo" />
           <span className="brand-kicker">Onmac Liquor Store</span>
         </a>
         <a

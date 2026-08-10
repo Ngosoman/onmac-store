@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import onmacLogo from '../assets/onmac-logo.png';
 
 const DEFAULT_PRODUCTION_API_BASE_URL = 'https://onmac-store.onrender.com';
 
@@ -92,6 +93,7 @@ export default function ContactPage() {
     <div className="app-shell">
       <section className="contact-page">
         <div className="contact-intro">
+          <img className="contact-logo" src={onmacLogo} alt="Onmac logo" />
           <p className="eyebrow">Contact Us</p>
           <h1>We are here to help with your order, delivery, or bulk requests</h1>
           <p>
