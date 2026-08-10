@@ -1,7 +1,7 @@
 import logging
 
 from django.conf import settings
-from django.core.mail import send_mail
+from django.core.mail import EmailMessage
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -38,14 +38,14 @@ class ContactSubmissionAPIView(APIView):
         body = "\n".join(body_lines)
 
         try:
-            send_mail(
+            email = EmailMessage(
                 subject=subject,
-                message=body,
+                body=body,
                 from_email=from_email,
-                recipient_list=[recipient],
-                fail_silently=False,
+                to=[recipient],
                 reply_to=[payload["email"]],
             )
+            email.send(fail_silently=False)
         except Exception:
             logger.exception("Unable to deliver contact submission email")
             return Response(
