@@ -120,6 +120,7 @@ INSTALLED_APPS = [
     'cart',
     'orders',
     'payments',
+    'contact',
 ]
 
 MIDDLEWARE = [
@@ -248,3 +249,23 @@ STRIPE_SUCCESS_URL = env("STRIPE_SUCCESS_URL", default="http://localhost:5173/pa
 STRIPE_CANCEL_URL = env("STRIPE_CANCEL_URL", default="http://localhost:5173/checkout")
 
 FRONTEND_PAYMENT_RESULT_URL = env("FRONTEND_PAYMENT_RESULT_URL", default="http://localhost:5173/payment-result")
+
+# Contact form and email delivery configuration
+CONTACT_RECEIVER_EMAIL = env("CONTACT_RECEIVER_EMAIL", default="onmac.limited@gmail.com")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="onmac.limited@gmail.com")
+
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND",
+    default=(
+        "django.core.mail.backends.console.EmailBackend"
+        if DEBUG
+        else "django.core.mail.backends.smtp.EmailBackend"
+    ),
+)
+EMAIL_HOST = env("EMAIL_HOST", default="smtp.gmail.com")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+EMAIL_USE_SSL = env.bool("EMAIL_USE_SSL", default=False)
+EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", default=20)

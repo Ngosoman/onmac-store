@@ -49,6 +49,7 @@ export default function Header({ cartCount, searchQuery, onSearchChange }) {
           <a href="#checkout">Checkout</a>
           <a href="#cart">Track Order</a>
           <a href="#products">Corporate Gifts</a>
+          <a href="/contact">Contact Us</a>
         </nav>
       </div>
     </header>

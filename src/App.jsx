@@ -5,6 +5,7 @@ import CartSection from './components/CartSection';
 import CheckoutForm from './components/CheckoutForm';
 import Footer from './components/Footer';
 import PaymentResult from './components/PaymentResult';
+import ContactPage from './components/ContactPage';
 import { products } from './data/products';
 
 export default function App() {
@@ -14,6 +15,10 @@ export default function App() {
 
   if (window.location.pathname.startsWith('/payment-result')) {
     return <PaymentResult />;
+  }
+
+  if (window.location.pathname.startsWith('/contact')) {
+    return <ContactPage />;
   }
 
   const cartCount = cart.reduce((total, item) => total + item.quantity, 0);

@@ -36,6 +36,7 @@ def api_root(request):
             "cart": "/api/cart/",
             "orders": "/api/orders/",
             "payments": "/api/payments/",
+            "contact": "/api/contact/",
         }
     })
 
@@ -50,4 +51,5 @@ urlpatterns = [
     path("api/cart/", include("cart.urls")),
     path("api/orders/", include("orders.urls")),
     path("api/payments/", include("payments.urls")),
+    path("api/contact/", include("contact.urls")),
 ]
