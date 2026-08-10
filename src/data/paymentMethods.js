@@ -9,9 +9,9 @@ export const paymentMethodGroups = [
   {
     title: 'E wallets',
     methods: [
-      { label: 'Payoneer', value: 'Payoneer' },
+      // { label: 'Payoneer', value: 'Payoneer' },
       { label: 'Paypal', value: 'Paypal' },
-      { label: 'Airtm', value: 'Airtm' },
+      // { label: 'Airtm', value: 'Airtm' },
       { label: 'Neteller', value: 'Neteller' },
       { label: 'Moneygo', value: 'Moneygo' },
       { label: 'Skrill', value: 'Skrill' },
@@ -22,21 +22,21 @@ export const paymentMethodGroups = [
       { label: 'Alipay', value: 'Alipay' },
     ],
   },
-  {
-    title: 'Prepaid cards',
-    methods: [
-      { label: 'Kuchinga vouchers', value: 'Kuchinga vouchers' },
-      { label: 'Mastercard', value: 'Mastercard' },
-      { label: 'Visacards', value: 'Visacards' },
-    ],
-  },
+  // {
+  //   title: 'Prepaid cards',
+  //   methods: [
+  //     // { label: 'Kuchinga vouchers', value: 'Kuchinga vouchers' },
+  //     { label: 'Mastercard', value: 'Mastercard' },
+  //     { label: 'Visacards', value: 'Visacards' },
+  //   ],
+  // },
   {
     title: 'Cards',
     methods: [
       { label: 'Stripe', value: 'Stripe' },
       { label: 'Card', value: 'Card' },
-      { label: 'Credit Card', value: 'Credit Card' },
-      { label: 'Debit Card', value: 'Debit Card' },
+      // { label: 'Credit Card', value: 'Credit Card' },
+      // { label: 'Debit Card', value: 'Debit Card' },
     ],
   },
   {
