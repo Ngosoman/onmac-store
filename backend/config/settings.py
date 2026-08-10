@@ -252,6 +252,7 @@ FRONTEND_PAYMENT_RESULT_URL = env("FRONTEND_PAYMENT_RESULT_URL", default="http:/
 
 # Contact form and email delivery configuration
 CONTACT_RECEIVER_EMAIL = env("CONTACT_RECEIVER_EMAIL", default="onmac.limited@gmail.com")
+ORDER_NOTIFICATION_EMAIL = env("ORDER_NOTIFICATION_EMAIL", default="onmac.limited@gmail.com")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="onmac.limited@gmail.com")
 
 EMAIL_BACKEND = env(
