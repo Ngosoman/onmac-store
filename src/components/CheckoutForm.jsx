@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { paymentMethodGroups } from '../data/paymentMethods';
 
 const DEFAULT_PRODUCTION_API_BASE_URL = 'https://onmac-store.onrender.com';
@@ -18,6 +18,7 @@ function resolveApiBaseUrl() {
 }
 
 const API_BASE_URL = resolveApiBaseUrl();
+const CHECKOUT_REQUEST_TIMEOUT_MS = 25000;
 
 function apiUrl(path) {
   if (!API_BASE_URL) {
@@ -36,6 +37,20 @@ async function parseApiResponse(response) {
   return {
     detail: [text || `Request failed with status ${response.status}.`],
   };
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = CHECKOUT_REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
 }
 
 function normalizePaymentMethod(method) {
@@ -111,6 +126,7 @@ export default function CheckoutForm({ cartItems }) {
   const [selectedMethod, setSelectedMethod] = useState('Mpesa');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const submitLockRef = useRef(false);
 
   const isCrypto = isCryptoPayment(selectedMethod);
   const isPayPal = isPayPalPayment(selectedMethod);
@@ -143,7 +159,7 @@ export default function CheckoutForm({ cartItems }) {
   }
 
   async function submitOrderAndRedirect(orderPayload) {
-    const orderResponse = await fetch(apiUrl('/api/orders/'), {
+    const orderResponse = await fetchWithTimeout(apiUrl('/api/orders/'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(orderPayload),
@@ -154,7 +170,7 @@ export default function CheckoutForm({ cartItems }) {
       throw new Error(createdOrder?.detail?.[0] || 'Failed to create order.');
     }
 
-    const paymentResponse = await fetch(apiUrl('/api/payments/'), {
+    const paymentResponse = await fetchWithTimeout(apiUrl('/api/payments/'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -187,12 +203,20 @@ export default function CheckoutForm({ cartItems }) {
 
   async function handleSubmit(event) {
     event.preventDefault();
+
+    if (submitLockRef.current || isSubmitting) {
+      return;
+    }
+
     setErrorMessage('');
 
     if (cartItems.length === 0) {
       setErrorMessage('Your cart is empty. Add items before checkout.');
       return;
     }
+
+    submitLockRef.current = true;
+    setIsSubmitting(true);
 
     const formData = new FormData(event.currentTarget);
     const firstName = String(formData.get('firstName') || '').trim();
@@ -205,6 +229,8 @@ export default function CheckoutForm({ cartItems }) {
 
     if (!firstName || !lastName || !email) {
       setErrorMessage('First name, last name, and email are required.');
+      submitLockRef.current = false;
+      setIsSubmitting(false);
       return;
     }
 
@@ -226,11 +252,16 @@ export default function CheckoutForm({ cartItems }) {
       })),
     };
 
-    setIsSubmitting(true);
     try {
       await submitOrderAndRedirect(orderPayload);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Checkout failed. Please try again.');
+      const resolvedMessage = error instanceof DOMException && error.name === 'AbortError'
+        ? 'Checkout request took too long. Please try again.'
+        : error instanceof Error
+          ? error.message
+          : 'Checkout failed. Please try again.';
+      setErrorMessage(resolvedMessage);
+      submitLockRef.current = false;
       setIsSubmitting(false);
     }
   }

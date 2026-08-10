@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
+from datetime import timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -10,6 +11,7 @@ import requests
 from django.conf import settings
 from django.core.cache import cache
 from django.db import IntegrityError, transaction
+from django.utils import timezone
 from rest_framework import serializers
 
 from orders.models import Order
@@ -614,11 +616,19 @@ class NowPaymentsService:
 
 class PaymentService:
 	"""Application service for payment initiation and provider orchestration."""
+	REUSABLE_PAYMENT_WINDOW = timedelta(minutes=30)
 
 	@staticmethod
 	def _get_order(order_reference: str) -> Order:
 		try:
 			return Order.objects.prefetch_related("items").get(reference=order_reference)
+		except Order.DoesNotExist as exc:
+			raise serializers.ValidationError({"order_reference": ["Order not found."]}) from exc
+
+	@staticmethod
+	def _get_order_for_payment(order_reference: str) -> Order:
+		try:
+			return Order.objects.select_for_update().prefetch_related("items").get(reference=order_reference)
 		except Order.DoesNotExist as exc:
 			raise serializers.ValidationError({"order_reference": ["Order not found."]}) from exc
 
@@ -644,6 +654,25 @@ class PaymentService:
 		if provider == Payment.Provider.STRIPE:
 			return StripeService
 		raise serializers.ValidationError({"provider": ["Unsupported payment provider."]})
+
+	@staticmethod
+	def _get_reusable_pending_payment(*, order: Order, provider: str) -> Payment | None:
+		if provider != Payment.Provider.STRIPE:
+			return None
+
+		cutoff = timezone.now() - PaymentService.REUSABLE_PAYMENT_WINDOW
+		return (
+			Payment.objects.select_related("order")
+			.filter(
+				order=order,
+				provider=provider,
+				status__in=[Payment.Status.INITIALIZED, Payment.Status.PENDING],
+				created_at__gte=cutoff,
+			)
+			.exclude(redirect_url="")
+			.order_by("-created_at")
+			.first()
+		)
 
 	@staticmethod
 	def _resolve_payment_for_notification(*, order_tracking_id: str, merchant_reference: str | None) -> Payment:
@@ -750,10 +779,15 @@ class PaymentService:
 	@staticmethod
 	@transaction.atomic
 	def initiate_payment(*, order_reference: str, provider: str) -> Payment:
-		order = PaymentService._get_order(order_reference)
+		order = PaymentService._get_order_for_payment(order_reference)
 		PaymentService._validate_order_for_payment(order)
 		requested_provider = provider or order.payment_method
 		resolved_provider = PaymentRoutingService.resolve_provider(requested_provider)
+
+		reusable_payment = PaymentService._get_reusable_pending_payment(order=order, provider=resolved_provider)
+		if reusable_payment is not None:
+			logger.info("Reusing existing %s payment %s for order %s", resolved_provider, reusable_payment.reference, order.reference)
+			return reusable_payment
 
 		try:
 			payment = Payment.objects.create(

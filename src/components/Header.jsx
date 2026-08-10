@@ -1,4 +1,4 @@
-export default function Header({ cartCount }) {
+export default function Header({ cartCount, searchQuery, onSearchChange }) {
   return (
     <header className="site-header">
       <div className="header-top">
@@ -22,12 +22,28 @@ export default function Header({ cartCount }) {
           <a href="#products">Accessories</a>
         </nav>
 
-        <div className="header-search" role="search">
-          <span>Search Wine &amp; Liquor</span>
-          <a href="#products" className="header-search-link" aria-label="Go to product search">
-            Search
-          </a>
-        </div>
+        <form
+          className="header-search"
+          role="search"
+          onSubmit={(event) => {
+            event.preventDefault();
+            document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }}
+        >
+          <label htmlFor="header-product-search" className="header-search-label">Search Wine &amp; Liquor</label>
+          <div className="header-search-controls">
+            <input
+              id="header-product-search"
+              type="search"
+              value={searchQuery}
+              onChange={(event) => onSearchChange(event.target.value)}
+              placeholder="Search products"
+            />
+            <button type="submit" className="header-search-link" aria-label="Search products">
+              Search
+            </button>
+          </div>
+        </form>
 
         <nav aria-label="Store links" className="secondary-links">
           <a href="#checkout">Checkout</a>

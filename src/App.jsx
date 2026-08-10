@@ -10,6 +10,7 @@ import { products } from './data/products';
 export default function App() {
   const [cart, setCart] = useState([]);
   const [cartFeedback, setCartFeedback] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   if (window.location.pathname.startsWith('/payment-result')) {
     return <PaymentResult />;
@@ -88,9 +89,9 @@ export default function App() {
           </button>
         </div>
       ) : null}
-      <Header cartCount={cartCount} />
+      <Header cartCount={cartCount} searchQuery={searchQuery} onSearchChange={setSearchQuery} />
       <main>
-        <ProductGrid onAddToCart={handleAddToCart} />
+        <ProductGrid onAddToCart={handleAddToCart} query={searchQuery} onQueryChange={setSearchQuery} />
         <CartSection
           cartItems={cartItems}
           onIncreaseItem={handleIncreaseItem}

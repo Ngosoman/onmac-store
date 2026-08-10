@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { products } from '../data/products';
 
 const categoryTypes = ['All', ...Array.from(new Set(products.map((product) => product.category)))];
-const subcategoryTypes = ['All', ...Array.from(new Set(products.map((product) => product.subcategory)))];
 const ITEMS_PER_PAGE = 24;
 
 const categoryEmblems = {
@@ -12,15 +11,23 @@ const categoryEmblems = {
   'Non-Alcoholic': 'N',
 };
 
-export default function ProductGrid({ onAddToCart }) {
-  const [query, setQuery] = useState('');
+export default function ProductGrid({ onAddToCart, query, onQueryChange }) {
   const [activeCategory, setActiveCategory] = useState('All');
   const [activeSubcategory, setActiveSubcategory] = useState('All');
   const [imageErrors, setImageErrors] = useState({});
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
 
+  const subcategoryTypes = useMemo(() => {
+    const availableSubcategories = products
+      .filter((product) => activeCategory === 'All' || product.category === activeCategory)
+      .map((product) => product.subcategory);
+
+    return ['All', ...Array.from(new Set(availableSubcategories))];
+  }, [activeCategory]);
+
   const filteredProducts = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+    const normalizedQuery = String(query || '').trim().toLowerCase();
+    const queryTokens = normalizedQuery.split(/\s+/).filter(Boolean);
 
     return products.filter((product) => {
       if (activeCategory !== 'All' && product.category !== activeCategory) {
@@ -31,7 +38,7 @@ export default function ProductGrid({ onAddToCart }) {
         return false;
       }
 
-      if (!normalizedQuery) {
+      if (queryTokens.length === 0) {
         return true;
       }
 
@@ -47,7 +54,7 @@ export default function ProductGrid({ onAddToCart }) {
         .join(' ')
         .toLowerCase();
 
-      return searchableText.includes(normalizedQuery);
+      return queryTokens.every((token) => searchableText.includes(token));
     });
   }, [activeCategory, activeSubcategory, query]);
 
@@ -61,6 +68,15 @@ export default function ProductGrid({ onAddToCart }) {
   useEffect(() => {
     setVisibleCount(ITEMS_PER_PAGE);
   }, [query, activeCategory, activeSubcategory]);
+
+  useEffect(() => {
+    if (activeSubcategory === 'All') {
+      return;
+    }
+    if (!subcategoryTypes.includes(activeSubcategory)) {
+      setActiveSubcategory('All');
+    }
+  }, [activeSubcategory, subcategoryTypes]);
 
   return (
     <section className="products-section" id="products">
@@ -103,7 +119,7 @@ export default function ProductGrid({ onAddToCart }) {
           <input
             type="search"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => onQueryChange(event.target.value)}
             placeholder="Search by brand, drink type, category, size, or note"
           />
           <small>Try: Johnnie Walker, tequila, gin, cabernet, tonic, lager</small>
@@ -119,7 +135,7 @@ export default function ProductGrid({ onAddToCart }) {
             type="button"
             className="ghost-button"
             onClick={() => {
-              setQuery('');
+              onQueryChange('');
               setActiveCategory('All');
               setActiveSubcategory('All');
             }}
