@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <clipPath id="circleClip">
+      <circle cx="128" cy="128" r="124" />
+    </clipPath>
+  </defs>
+  <rect width="256" height="256" fill="none" />
+  <circle cx="128" cy="128" r="124" fill="#ffffff" />
+  <image href="/onmac-favicon.jpg" x="4" y="4" width="248" height="248" preserveAspectRatio="xMidYMid slice" clip-path="url(#circleClip)" />
+</svg>

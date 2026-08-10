@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import onmacLogo from '../assets/onmac-logo.png';
+import onmacLogo from '../assets/onmac-logo.jpg';
 
 const DEFAULT_PRODUCTION_API_BASE_URL = 'https://onmac-store.onrender.com';
 

@@ -1,4 +1,4 @@
-import onmacLogo from '../assets/onmac-logo.png';
+import onmacLogo from '../assets/onmac-logo.jpg';
 
 export default function Footer() {
   return (
