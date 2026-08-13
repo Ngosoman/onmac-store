@@ -109,6 +109,14 @@ class StripeService:
 			"customer_email": order.customer_email,
 			"metadata": metadata,
 			"line_items": StripeService._build_line_items(order),
+			"payment_method_types": ["card"],
+			"payment_intent_data": {
+				"payment_method_options": {
+					"card": {
+						"request_three_d_secure": "automatic",
+					},
+				},
+			},
 		}
 		if not request_payload["success_url"]:
 			fallback_base = str(getattr(settings, "FRONTEND_PAYMENT_RESULT_URL", "") or "").strip()
@@ -124,6 +132,14 @@ class StripeService:
 				customer_email=order.customer_email,
 				metadata=metadata,
 				line_items=StripeService._build_line_items(order),
+				payment_method_types=["card"],
+				payment_intent_data={
+					"payment_method_options": {
+						"card": {
+							"request_three_d_secure": "automatic",
+						},
+					},
+				},
 				idempotency_key=f"payment:{payment.reference}",
 			)
 		except stripe.error.StripeError as exc:
