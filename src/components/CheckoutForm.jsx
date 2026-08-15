@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { paymentMethodGroups } from '../data/paymentMethods';
 
 const DEFAULT_PRODUCTION_API_BASE_URL = 'https://onmac-store.onrender.com';
@@ -126,6 +126,8 @@ export default function CheckoutForm({ cartItems }) {
   const [selectedMethod, setSelectedMethod] = useState('Mpesa');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [checkoutStage, setCheckoutStage] = useState('idle');
+  const [waitSeconds, setWaitSeconds] = useState(0);
   const submitLockRef = useRef(false);
 
   const isCrypto = isCryptoPayment(selectedMethod);
@@ -140,6 +142,40 @@ export default function CheckoutForm({ cartItems }) {
     if (isStripe) return 'Redirecting to Stripe...';
     return 'Redirecting to Pesapal...';
   }
+
+  function getStageMessage() {
+    if (checkoutStage === 'creating_order') {
+      return 'Creating your order details...';
+    }
+    if (checkoutStage === 'initializing_payment') {
+      if (isStripe) return 'Contacting Stripe and preparing secure checkout...';
+      if (isPayPal) return 'Contacting PayPal and preparing secure checkout...';
+      if (isCrypto) return 'Generating your crypto invoice...';
+      return 'Preparing your payment session...';
+    }
+    if (checkoutStage === 'redirecting') {
+      if (isStripe) return 'Redirecting you to Stripe now...';
+      if (isPayPal) return 'Redirecting you to PayPal now...';
+      if (isCrypto) return 'Opening your crypto payment page...';
+      return 'Redirecting you to complete payment...';
+    }
+    return '';
+  }
+
+  useEffect(() => {
+    if (!isSubmitting) {
+      setWaitSeconds(0);
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setWaitSeconds((previous) => previous + 1);
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [isSubmitting]);
 
   function getPaymentDescription() {
     if (isCrypto) {
@@ -159,6 +195,7 @@ export default function CheckoutForm({ cartItems }) {
   }
 
   async function submitOrderAndRedirect(orderPayload) {
+    setCheckoutStage('creating_order');
     const orderResponse = await fetchWithTimeout(apiUrl('/api/orders/'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -170,6 +207,7 @@ export default function CheckoutForm({ cartItems }) {
       throw new Error(createdOrder?.detail?.[0] || 'Failed to create order.');
     }
 
+    setCheckoutStage('initializing_payment');
     const paymentResponse = await fetchWithTimeout(apiUrl('/api/payments/'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -187,6 +225,8 @@ export default function CheckoutForm({ cartItems }) {
     if (!createdPayment.redirect_url) {
       throw new Error('Payment link is missing.');
     }
+
+    setCheckoutStage('redirecting');
 
     if (isCrypto) {
       // NOWPayments — open invoice in new tab
@@ -217,6 +257,7 @@ export default function CheckoutForm({ cartItems }) {
 
     submitLockRef.current = true;
     setIsSubmitting(true);
+    setCheckoutStage('creating_order');
 
     const formData = new FormData(event.currentTarget);
     const firstName = String(formData.get('firstName') || '').trim();
@@ -256,11 +297,12 @@ export default function CheckoutForm({ cartItems }) {
       await submitOrderAndRedirect(orderPayload);
     } catch (error) {
       const resolvedMessage = error instanceof DOMException && error.name === 'AbortError'
-        ? 'Checkout request took too long. Please try again.'
+        ? 'The payment setup is taking longer than expected. Please check your connection and try again.'
         : error instanceof Error
           ? error.message
           : 'Checkout failed. Please try again.';
       setErrorMessage(resolvedMessage);
+      setCheckoutStage('idle');
       submitLockRef.current = false;
       setIsSubmitting(false);
     }
@@ -314,6 +356,16 @@ export default function CheckoutForm({ cartItems }) {
           <p className="payment-note">Pesapal conversion rate in use: 1 USD = KES {USD_TO_KES_RATE.toFixed(2)}.</p>
         ) : null}
       </div>
+      {isSubmitting ? (
+        <div className="checkout-progress" aria-live="polite" role="status">
+          <span className="checkout-progress-spinner" aria-hidden="true" />
+          <div>
+            <p className="checkout-progress-title">Preparing your secure checkout</p>
+            <p className="checkout-progress-text">{getStageMessage()}</p>
+            <p className="checkout-progress-text checkout-progress-text--muted">Elapsed: {waitSeconds}s. Do not close this tab.</p>
+          </div>
+        </div>
+      ) : null}
       <div className="form-grid">
         <label>
           First name
@@ -344,7 +396,7 @@ export default function CheckoutForm({ cartItems }) {
           <input type="text" name="billingState" />
         </label>
       </div>
-      {errorMessage ? <p className="payment-note">{errorMessage}</p> : null}
+      {errorMessage ? <p className="payment-note payment-note--error">{errorMessage}</p> : null}
       <button className="submit-button" type="submit" disabled={isSubmitting}>
         {isSubmitting ? getRedirectLabel() : 'Place order'}
       </button>

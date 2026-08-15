@@ -110,11 +110,9 @@ class StripeService:
 			"metadata": metadata,
 			"line_items": StripeService._build_line_items(order),
 			"payment_method_types": ["card"],
-			"payment_intent_data": {
-				"payment_method_options": {
-					"card": {
-						"request_three_d_secure": "automatic",
-					},
+			"payment_method_options": {
+				"card": {
+					"request_three_d_secure": "automatic",
 				},
 			},
 		}
@@ -133,11 +131,9 @@ class StripeService:
 				metadata=metadata,
 				line_items=StripeService._build_line_items(order),
 				payment_method_types=["card"],
-				payment_intent_data={
-					"payment_method_options": {
-						"card": {
-							"request_three_d_secure": "automatic",
-						},
+				payment_method_options={
+					"card": {
+						"request_three_d_secure": "automatic",
 					},
 				},
 				idempotency_key=f"payment:{payment.reference}",
