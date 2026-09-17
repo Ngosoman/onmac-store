@@ -5,10 +5,22 @@ const remoteImagePools = {
     'https://images.unsplash.com/photo-1582819509237-d78e6765fdb1?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=900&q=80',
   ],
+  cognac: [
+    'https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1563379091339-03246963d29a?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=900&q=80',
+  ],
   clearSpirits: [
     'https://images.unsplash.com/photo-1607622750671-6cd9a99f0c91?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1575650772417-e6b418b0d932?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1514361892635-eae31ec8b145?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=900&q=80',
+  ],
+  tequila: [
+    'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1575650772417-e6b418b0d932?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1607622750671-6cd9a99f0c91?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=900&q=80',
   ],
   rumLiqueur: [
@@ -47,11 +59,41 @@ const remoteImagePools = {
     'https://images.unsplash.com/photo-1563379091339-03246963d29a?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=900&q=80',
   ],
-  softDrinks: [
+  water: [
+    'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1559827260-dc66d52bef19?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1523362628745-0c100150b504?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1502741338009-cac2772e18bc?auto=format&fit=crop&w=900&q=80',
+  ],
+  soda: [
     'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1497534446932-c925b458314e?auto=format&fit=crop&w=900&q=80',
+  ],
+  juice: [
+    'https://images.unsplash.com/photo-1613478223719-2ab802602423?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1600271886742-f049cd451bba?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1502741338009-cac2772e18bc?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=900&q=80',
+  ],
+  tonic: [
+    'https://images.unsplash.com/photo-1595981267035-7b04ca84a82d?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=900&q=80',
+  ],
+  mixer: [
+    'https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1497534446932-c925b458314e?auto=format&fit=crop&w=900&q=80',
+  ],
+  sparklingJuice: [
+    'https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1497534446932-c925b458314e?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=900&q=80',
   ],
 };
 
@@ -59,10 +101,10 @@ const imageGroupBySeries = {
   'Spirits:Scotch': 'whiskey',
   'Spirits:Bourbon': 'whiskey',
   'Spirits:Irish Whiskey': 'whiskey',
-  'Spirits:Cognac': 'whiskey',
+  'Spirits:Cognac': 'cognac',
   'Spirits:Vodka': 'clearSpirits',
   'Spirits:Gin': 'clearSpirits',
-  'Spirits:Tequila': 'clearSpirits',
+  'Spirits:Tequila': 'tequila',
   'Spirits:Rum': 'rumLiqueur',
   'Spirits:Liqueur': 'rumLiqueur',
   'Wine:Champagne': 'sparklingWine',
@@ -76,13 +118,13 @@ const imageGroupBySeries = {
   'Beer:Stout': 'darkBeer',
   'Beer:Cider': 'beer',
   'Beer:Wheat Beer': 'beer',
-  'Non-Alcoholic:Tonic': 'softDrinks',
-  'Non-Alcoholic:Mixer': 'softDrinks',
-  'Non-Alcoholic:Sparkling Juice': 'softDrinks',
-  'Non-Alcoholic:Soft Drink': 'softDrinks',
-  'Chaser:Water': 'softDrinks',
-  'Chaser:Soda': 'softDrinks',
-  'Chaser:Juice': 'softDrinks',
+  'Non-Alcoholic:Tonic': 'tonic',
+  'Non-Alcoholic:Mixer': 'mixer',
+  'Non-Alcoholic:Sparkling Juice': 'sparklingJuice',
+  'Non-Alcoholic:Soft Drink': 'soda',
+  'Chaser:Water': 'water',
+  'Chaser:Soda': 'soda',
+  'Chaser:Juice': 'juice',
 };
 
 const fallbackRemoteImage = remoteImagePools.sparklingWine[0];
